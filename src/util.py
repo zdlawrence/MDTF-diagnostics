@@ -19,6 +19,7 @@ else:
     import subprocess
 import signal
 import errno
+import json
 import yaml
 import datelabel
 
@@ -139,28 +140,15 @@ class MultiMap(defaultdict):
         """
         super(MultiMap, self).__init__(set, *args, **kwargs)
         for key in self.keys():
-            if type(self[key]) is not set:
-                if hasattr(self[key], '__iter__'):
-                    super(MultiMap, self).__setitem__(key, set(self[key]))
-                else:
-                    super(MultiMap, self).__setitem__(key, set([self[key]]))
+            super(MultiMap, self).__setitem__(key, coerce_to_collection(self[key], set))
 
     def __setitem__(self, key, value):
-        if type(value) is not set:
-            if hasattr(value, '__iter__'):
-                value = set(value)
-            else:
-                value = set([value])
-        super(MultiMap, self).__setitem__(key, value)
+        super(MultiMap, self).__setitem__(key, coerce_to_collection(value, set))
 
     def get_(self, key):
         if key not in self.keys():
             raise KeyError(key)
-        temp = list(self[key])
-        if len(temp) == 1:
-            return temp[0]
-        else:
-            return temp
+        return coerce_from_collection(self[key])
     
     def to_dict(self):
         d = {}
@@ -179,11 +167,7 @@ class MultiMap(defaultdict):
         # if val not in self.values():
         #     raise KeyError(val)
         temp = self.inverse()
-        temp = list(temp[val])
-        if len(temp) == 1:
-            return temp[0]
-        else:
-            return temp
+        return coerce_from_collection(temp[val])
 
 class VariableTranslator(Singleton):
     def __init__(self, unittest_flag=False, verbose=0):
@@ -365,48 +349,46 @@ class Namespace(dict):
     def __hash__(self):
         return hash(self._freeze())
 
-class DataSet(Namespace):
-    """Class to describe datasets.
-
-    `https://stackoverflow.com/a/48806603`_ for implementation.
-    """
-    def __init__(self, *args, **kwargs):
-        super(DataSet, self).__init__(*args, **kwargs)
-        for key in ['name', 'units', 'date_range', 'date_freq', '_local_data']:
-            if key not in self:
-                self[key] = None
-        
-        for key in ['_remote_data', 'alternates']:
-            if key not in self:
-                self[key] = []
-
-        if ('var_name' in self) and (self.name is None):
-            self.name = self.var_name
-            del self.var_name
-        if ('freq' in self) and (self.date_freq is None):
-            self.date_freq = datelabel.DateFrequency(self.freq)
-            del self.freq
-
-    def copy(self, new_name=None):
-        temp = super(DataSet, self).copy()
-        if new_name is not None:
-            temp.name = new_name
-        return temp  
-
-    def _freeze(self):
-        """Return immutable representation of (current) attributes.
-
-        Exclude attributes starting with '_' from the comparison, in case 
-        we want DataSets with different timestamps, temporary directories, etc.
-        to compare as equal.
-        """
-        d = self.toDict()
-        keys_to_hash = sorted(k for k in d if not k.startswith('_'))
-        d2 = {k: repr(d[k]) for k in keys_to_hash}
-        FrozenDataSet = namedtuple('FrozenDataSet', keys_to_hash)
-        return FrozenDataSet(**d2)
-
 # ------------------------------------
+
+def read_json(file_path):
+    def _utf8_to_ascii(data, ignore_dicts = False):
+        # json returns UTF-8 encoded strings by default, but we're in py2 where 
+        # everything is ascii. Convert strings to ascii using this solution:
+        # https://stackoverflow.com/a/33571117
+
+        # if this is a unicode string, return its string representation
+        if isinstance(data, unicode):
+            # raise UnicodeDecodeError if file contains non-ascii characters
+            return data.encode('ascii', 'strict')
+        # if this is a list of values, return list of byteified values
+        if isinstance(data, list):
+            return [_utf8_to_ascii(item, ignore_dicts=True) for item in data]
+        # if this is a dictionary, return dictionary of byteified keys and values
+        # but only if we haven't already byteified it
+        if isinstance(data, dict) and not ignore_dicts:
+            return {
+                _utf8_to_ascii(key, ignore_dicts=True): _utf8_to_ascii(value, ignore_dicts=True)
+                for key, value in data.iteritems()
+            }
+        # if it's anything else, return it in its original form
+        return data
+
+    assert os.path.exists(file_path), \
+        "Couldn't find file {}.".format(file_path)
+    try:    
+        with open(file_path, 'r') as file_obj:
+            file_contents = _utf8_to_ascii(
+                json.load(file_obj, object_hook=_utf8_to_ascii),
+                ignore_dicts=True
+            )
+    except UnicodeDecodeError:
+        print '{} contains non-ascii characters. Exiting.'.format(file_path)
+        exit()
+    except IOError:
+        print 'Fatal IOError when trying to read {}. Exiting.'.format(file_path)
+        exit()
+    return file_contents
 
 def read_yaml(file_path, verbose=0):
     """Wrapper to the ``safe_load`` function of the `PyYAML <https://pyyaml.org/>`_ 
@@ -657,6 +639,28 @@ def get_available_programs(verbose=0):
     return {'py': 'python', 'ncl': 'ncl', 'R': 'Rscript'}
     #return {'py': sys.executable, 'ncl': 'ncl'}  
 
+def coerce_to_collection(obj, coll_type):
+    assert coll_type in [list, set] # only supported types for now
+    if obj is None:
+        return coll_type([])
+    elif isinstance(obj, coll_type):
+        return obj
+    elif isinstance(obj, dict):
+        return coll_type(obj.keys())
+    elif hasattr(obj, '__iter__'):
+        return coll_type(obj)
+    else:
+        return coll_type([obj])
+
+def coerce_from_collection(obj):
+    if hasattr(obj, '__iter__'):
+        if len(obj) == 1:
+            return list(obj)[0]
+        else:
+            return list(obj)
+    else:
+        return obj        
+
 def setenv(varname,varvalue,env_dict,verbose=0,overwrite=True):
     """Wrapper to set environment variables.
 
@@ -746,12 +750,14 @@ def append_html_template(template_file, target_file, template_dict={},
 def caselist_from_args(args):
     d = {}
     for k in ['CASENAME', 'FIRSTYR', 'LASTYR', 'root_dir', 'component', 
-        'chunk_freq', 'data_freq', 'model', 'variable_convention']:
+        'chunk_freq', 'data_freq', 'model', 'experiment', 'variable_convention']:
         if k in args:
             d[k] = args[k]
     for k in ['model', 'variable_convention']:
         if k not in d:
             d[k] = 'CMIP_GFDL'
+    if 'CASENAME' not in d:
+        d['CASENAME'] = '{}_{}'.format(d['model'], d['experiment'])
     if 'root_dir' not in d and 'CASE_ROOT_DIR' in args:
         d['root_dir'] = args['CASE_ROOT_DIR']
     return [d]
@@ -786,7 +792,9 @@ def parse_mdtf_args(frepp_args, cmdline_args, default_args, rel_paths_root='', v
         # only let this be overridden if we're in a unit test
         rel_paths_root = cmdline_args['CODE_ROOT']
 
-    if 'CASENAME' in cmdline_args:
+    if ('CASENAME' in cmdline_args) or (
+        'model' in cmdline_args and 'experiment' in cmdline_args
+        ):
         # also set up caselist with frepp data
         default_args['case_list'] = caselist_from_args(cmdline_args)
 
