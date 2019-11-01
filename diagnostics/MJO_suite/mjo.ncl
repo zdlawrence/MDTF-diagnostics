@@ -25,10 +25,16 @@ f = addfile(file_dir+casename+".u200.day.nc","r")
 gw = f->gw
 date = f->date
 maxdays = dimsizes(date)
+print("######### Debug u200 output netcdf size")
+print("ndays: "+ndays)
+print("maxdays: "+maxdays)
 if (ndays .gt. maxdays) then
   ndays = maxdays
 end if
+print("dimsizes u200:")
+print(dimsizes(f->u200))
 u200 = f->u200(0:ndays-1,{-10:10},:) 
+print("loaded u200")
 yrfrac = yyyymmdd2yyyyFrac(date(0:ndays-1),0) ; second arg is an offset
 yrfrac!0 = "date as fraction of year"
 

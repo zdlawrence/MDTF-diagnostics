@@ -181,11 +181,11 @@ do i=0,dimsizes(plevs)-1
       temp_file = datadir+"/day/"+var_name_plev_package+".temp.nc"
       dst = datadir+"/day/"+casename+"."+var_name_plev_package+".day.nc"
       ; extract level
-      nco_call = "ncks -d "+level+","+LEV+","+LEV+"  "+src+" "+temp_file
+      nco_call = "ncks --no_tmp_fl -O -d "+level+","+LEV+","+LEV+"  "+src+" "+temp_file
       print(nco_call)
       system(nco_call)
       ; flatten to 3D
-      nco_call = "ncwa -O -a "+level+" -d "+level+",0,0 "+temp_file+" "+dst
+      nco_call = "ncwa --no_tmp_fl -O -a "+level+" -d "+level+",0,0 "+temp_file+" "+dst
       print(nco_call)
       system(nco_call)
 
