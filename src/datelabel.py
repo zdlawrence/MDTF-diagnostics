@@ -261,13 +261,15 @@ class DateRange(object):
         else:
             return (self.start <= item) and (self.end >= item)
     
-    def intersection(self, item):
+    def intersection(self, item, precision=None):
         if not self.overlaps(item):
             raise ValueError("{} and {} have empty intersection".format(self, item))
+        if precision is None:
+            precision=min(self.start.precision, item.start.precision)
         return DateRange(
             max(self.start, item.start), 
             min(self._orig_end, item._orig_end),
-            precision=min(self.start.precision, item.start.precision)
+            precision=precision
         )
 
 class DateFrequency(datetime.timedelta):

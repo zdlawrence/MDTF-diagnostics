@@ -373,7 +373,10 @@ class GfdlarchiveDataManager(DataManager):
         time_var_name = translate.fromCF(self.convention, 'time_coord')
         trim_count = 0
         for f in self.data_files[d_key]:
-            trimmed_range = f.date_range.intersection(self.date_range)
+            trimmed_range = f.date_range.intersection(
+                self.date_range, 
+                precision=f.date_range.start.precision
+            )
             if trimmed_range != f.date_range:
                 file_name = os.path.basename(f._remote_data)
                 print "\ttrimming '{}' of {} from {} to {}".format(
