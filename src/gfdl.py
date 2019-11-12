@@ -1,7 +1,6 @@
 import os
 import sys
 import re
-import tempfile
 if os.name == 'posix' and sys.version_info[0] < 3:
     try:
         import subprocess32 as subprocess
@@ -19,6 +18,7 @@ import conflict_resolution as choose
 import cmip6
 from data_manager import DataSet, DataManager, DataQueryFailure
 from environment_manager import VirtualenvEnvironmentManager, CondaEnvironmentManager
+from shared_diagnostic import Diagnostic, PodRequirementFailure
 from netcdf_helper import NcoNetcdfHelper # only option currently implemented
 
 class ModuleManager(util.Singleton):
@@ -101,6 +101,30 @@ class ModuleManager(util.Singleton):
             self._module(['load', mod])
         assert set(self._list()) == self.user_modules
 
+
+class GfdlDiagnostic(Diagnostic):
+    """Wrapper for Diagnostic that adds writing a placeholder directory to the
+    output as a lockfile if we're running in frepp cooperative mode.
+    """
+    # hack because we can't pass config to init easily
+    _config = None
+
+    def __init__(self, pod_name, verbose=0):
+        super(GfdlDiagnostic, self).__init__(pod_name, verbose)
+        self._has_placeholder = False
+
+    def setUp(self, verbose=0):
+        try:
+            super(GfdlDiagnostic, self).setUp(verbose)
+            make_placeholder_dir(
+                self.name, 
+                util.get_from_config('OUTPUT_DIR', self._config, section='paths'),
+                timeout=util.get_from_config('file_transfer_timeout', self._config),
+                dry_run=util.get_from_config('dry_run', self._config)
+            )
+            self._has_placeholder = True
+        except PodRequirementFailure:
+            raise
 
 class GfdlvirtualenvEnvironmentManager(VirtualenvEnvironmentManager):
     # Use module files to switch execution environments, as defined on 
@@ -219,6 +243,7 @@ class GfdlarchiveDataManager(DataManager):
         modMgr = ModuleManager()
         modMgr.load('gcp', 'nco') # should refactor
         config['settings']['netcdf_helper'] = 'NcoNetcdfHelper'
+        self.coop_mode = config['settings']['frepp']
 
         super(GfdlarchiveDataManager, self).__init__(case_dict, config, DateFreqMixin)
         assert ('root_dir' in case_dict)
@@ -471,16 +496,52 @@ class GfdlarchiveDataManager(DataManager):
     def process_fetched_data_hook(self):
         pass
 
+    def _make_html(self, cleanup=False):
+        paths = util.PathManager()
+        prev_html = os.path.join(self.MODEL_OUT_DIR, os.path.basename(self.TEMP_HTML))
+        if paths.OUTPUT_DIR == paths.WORKING_DIR \
+            and self.coop_mode and os.path.exists(prev_html):
+            # should just run cat in a shell
+            with open(prev_html, 'r') as f1:
+                contents = f1.read()
+                if os.path.exists(self.TEMP_HTML):
+                    with open(self.TEMP_HTML, 'a') as f2:
+                        f2.write(contents)
+                else:
+                    with open(self.TEMP_HTML, 'w') as f2:
+                        f2.write(contents)
+
+        super(GfdlarchiveDataManager, self)._make_html(cleanup)
+
     def _copy_to_output(self):
         # pylint: disable=maybe-no-member
         # use gcp, since OUTPUT_DIR might be mounted read-only
         paths = util.PathManager()
-        if paths.OUTPUT_DIR != paths.WORKING_DIR:
+        if paths.OUTPUT_DIR == paths.WORKING_DIR:
+            return # no copying needed
+        if self.coop_mode:
+            # only copy PODs that ran, whether they succeeded or not
+            for pod in self.pods:
+                if pod._has_placeholder:
+                    gcp_wrapper(
+                        pod.POD_WK_DIR, 
+                        self.MODEL_OUT_DIR,
+                        timeout=self.file_transfer_timeout, dry_run=self.dry_run
+                    )
+            # copy all case-level files
+            for f in os.path.listdir(self.MODEL_WK_DIR):
+                if os.path.isfile(f):
+                    gcp_wrapper(
+                        os.path.join(self.MODEL_WK_DIR, f), 
+                        self.MODEL_OUT_DIR,
+                        timeout=self.file_transfer_timeout, dry_run=self.dry_run
+                    )
+        else:
+            # copy everything at once
             gcp_wrapper(
                 self.MODEL_WK_DIR, 
-                os.path.dirname(os.path.normpath(self.MODEL_OUT_DIR)), 
-                timeout=self.file_transfer_timeout,
-                dry_run=self.dry_run
+                paths.OUTPUT_DIR,
+                timeout=self.file_transfer_timeout, dry_run=self.dry_run
             )
 
 
@@ -700,7 +761,20 @@ def gcp_wrapper(source_path, dest_dir, timeout=0, dry_run=False):
         ['gcp', '-sync', '-v', '-cd'] + source + dest,
         timeout=timeout, 
         dry_run=dry_run
-    ) 
+    )
+
+def make_placeholder_dir(dir_name, dest_root_dir, timeout=0, dry_run=False):
+    try:
+        os.mkdir(os.path.join(dest_root_dir, dir_name))
+    except OSError:
+        # use GCP for this because output dir might be on a read-only filesystem.
+        # apparently trying to test this with os.access is less robust than 
+        # just catching the error
+        paths = util.PathManager()
+        work_dir = paths.make_tempdir()
+        work_dir = os.path.join(work_dir, dir_name)
+        os.makedirs(work_dir)
+        gcp_wrapper(work_dir, dest_root_dir, timeout=timeout, dry_run=dry_run)
 
 def running_on_PPAN():
     """Return true if current host is in the PPAN cluster."""
