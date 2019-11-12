@@ -56,6 +56,7 @@ class Diagnostic(object):
         self.__dict__.update(paths.podPaths(self))
         file_contents = util.read_json(
             os.path.join(self.POD_CODE_DIR, 'settings.json'))
+        self.dry_run = False
 
         config = self._parse_pod_settings(file_contents['settings'], verbose)
         self.__dict__.update(config)
@@ -178,7 +179,9 @@ class Diagnostic(object):
                 ))
         try:
             self._check_pod_driver(verbose)
-            (found_files, missing_files) = self._check_for_varlist_files(self.varlist, verbose)
+            (found_files, missing_files) = self._check_for_varlist_files(
+                self.varlist, verbose
+            )
             self.found_files = found_files
             self.missing_files = missing_files
             if missing_files:
@@ -303,6 +306,9 @@ class Diagnostic(object):
         if ( verbose > 2 ): print func_name+" check_for_varlist_files called with ", varlist
         found_list = []
         missing_list = []
+        if self.dry_run:
+            print 'DRY_RUN: Skipping POD file check'
+            return (found_list, missing_list)
         for ds in varlist:
             if (verbose > 2 ): print func_name +" "+ds.name
             filepath = ds._local_data
