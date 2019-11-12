@@ -148,7 +148,7 @@ echo 'script start'
 --WORKING_DIR "$WK_DIR" \
 --OUTPUT_DIR "$out_dir" \
 --data_manager "GfdlPP" \
---environment_manager "GfdlVirtualenv" \
+--environment_manager "GfdlConda" \
 --CASENAME "$descriptor" \
 --CASE_ROOT_DIR "$PP_DIR" \
 --FIRSTYR $yr1 \
