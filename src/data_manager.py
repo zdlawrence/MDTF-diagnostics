@@ -150,7 +150,7 @@ class DataManager(object):
 
         paths = util.PathManager()
         self.__dict__.update(paths.modelPaths(self))
-        self.TEMP_HTML = os.path.join(self.MODEL_WK_DIR, '.pod_output_temp.html')
+        self.TEMP_HTML = os.path.join(self.MODEL_WK_DIR, 'pod_output_temp.html')
 
         # dynamic inheritance to add netcdf manipulation functions
         # source: https://stackoverflow.com/a/8545134
@@ -476,13 +476,11 @@ class DataManager(object):
         template_dict['DATE_TIME'] = \
             datetime.datetime.utcnow().strftime("%A, %d %B %Y %I:%M%p (UTC)")
         util.append_html_template(
-            os.path.join(src_dir, 'mdtf1.html'), 
-            dest, template_dict
+            os.path.join(src_dir, 'mdtf_header.html'), dest, template_dict
         )
         util.append_html_template(self.TEMP_HTML, dest, {})
         util.append_html_template(
-            os.path.join(src_dir, 'mdtf2.html'), 
-            dest, template_dict
+            os.path.join(src_dir, 'mdtf_footer.html'), dest, template_dict
         )
         if cleanup:
             os.remove(self.TEMP_HTML)
