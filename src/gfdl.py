@@ -522,7 +522,7 @@ class GfdlarchiveDataManager(DataManager):
                 if os.path.isfile(f):
                     gcp_wrapper(
                         os.path.join(self.MODEL_WK_DIR, f), 
-                        paths.OUTPUT_DIR,
+                        self.MODEL_OUT_DIR,
                         timeout=self.file_transfer_timeout, dry_run=self.dry_run
                     )
         else:
@@ -768,6 +768,7 @@ def gcp_wrapper(source_path, dest_dir, timeout=0, dry_run=False):
     else:
         source = ['gfdl:' + source_path]
         dest = ['gfdl:' + dest_dir + os.sep]
+    print '\tDEBUG: GCP {} -> {}'.format(source, dest)
     util.run_command(
         ['gcp', '-sync', '-v', '-cd'] + source + dest,
         timeout=timeout, 
