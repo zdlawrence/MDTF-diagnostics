@@ -371,7 +371,7 @@ class GfdlarchiveDataManager(DataManager):
         if self.tape_filesystem:
             print "start dmget of {} files".format(len(paths))
             util.run_command(['dmget','-t','-v'] + list(paths),
-                timeout=(len(paths)/2)*self.file_transfer_timeout,
+                timeout=len(paths)*self.file_transfer_timeout,
                 dry_run=self.dry_run)
             print "end dmget"
 
