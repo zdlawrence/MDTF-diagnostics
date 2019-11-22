@@ -125,6 +125,11 @@ class GfdlDiagnostic(Diagnostic):
         except PodRequirementFailure:
             raise
 
+    def tearDown(self, verbose=0):
+        # only run teardown (including logging error on index.html) if POD ran
+        if self._has_placeholder:
+            super(GfdlDiagnostic, self).tearDown(verbose)
+
 class GfdlvirtualenvEnvironmentManager(VirtualenvEnvironmentManager):
     # Use module files to switch execution environments, as defined on 
     # GFDL workstations and PP/AN cluster.
@@ -519,9 +524,11 @@ class GfdlarchiveDataManager(DataManager):
                         pod.POD_OUT_DIR,
                         timeout=self.file_transfer_timeout, dry_run=self.dry_run
                     )
-            # copy all case-level files, overwriting anything there
+            # copy all case-level files
+            print "\tDEBUG: files in {}".format(self.MODEL_WK_DIR)
             for f in os.listdir(self.MODEL_WK_DIR):
-                if os.path.isfile(f):
+                print "\t\tDEBUG: found {}".format(f)
+                if os.path.isfile(os.path.join(self.MODEL_WK_DIR, f)):
                     gcp_wrapper(
                         os.path.join(self.MODEL_WK_DIR, f), 
                         self.MODEL_OUT_DIR,
