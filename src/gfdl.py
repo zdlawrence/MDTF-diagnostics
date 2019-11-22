@@ -518,12 +518,12 @@ class GfdlarchiveDataManager(DataManager):
                         self.MODEL_OUT_DIR,
                         timeout=self.file_transfer_timeout, dry_run=self.dry_run
                     )
-            # copy all case-level files
-            for f in os.path.listdir(self.MODEL_WK_DIR):
+            # copy all case-level files, overwriting anything there
+            for f in os.listdir(self.MODEL_WK_DIR):
                 if os.path.isfile(f):
                     gcp_wrapper(
                         os.path.join(self.MODEL_WK_DIR, f), 
-                        self.MODEL_OUT_DIR,
+                        paths.OUTPUT_DIR,
                         timeout=self.file_transfer_timeout, dry_run=self.dry_run
                     )
         else:
