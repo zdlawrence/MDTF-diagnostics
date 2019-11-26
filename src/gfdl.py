@@ -371,8 +371,9 @@ class GfdlarchiveDataManager(DataManager):
         if self.tape_filesystem:
             print "start dmget of {} files".format(len(paths))
             util.run_command(['dmget','-t','-v'] + list(paths),
-                timeout=len(paths)*self.file_transfer_timeout,
-                dry_run=self.dry_run)
+                timeout= len(paths) * self.file_transfer_timeout,
+                dry_run=self.dry_run
+            ) 
             print "end dmget"
 
     def local_data_is_current(self, dataset):
@@ -537,9 +538,9 @@ class GfdlarchiveDataManager(DataManager):
         else:
             # copy everything at once
             gcp_wrapper(
-                self.MODEL_WK_DIR, 
-                paths.OUTPUT_DIR,
-                timeout=self.file_transfer_timeout, dry_run=self.dry_run
+                self.MODEL_WK_DIR, self.MODEL_OUT_DIR, 
+                timeout=self.file_transfer_timeout,
+                dry_run=self.dry_run
             )
 
 
@@ -673,8 +674,8 @@ class Gfdlcmip6abcDataManager(GfdlarchiveDataManager):
         if 'data_freq' in self.__dict__:
             self.table_id = cmip.table_id_from_freq(self.data_freq)
 
-    @abstractproperty
-    def _cmip6_root(self):
+    @abstractmethod # note: only using this as a property
+    def _cmip6_root():
         pass
 
     # also need to determine table?
@@ -754,14 +755,12 @@ class Gfdlcmip6abcDataManager(GfdlarchiveDataManager):
         return choices
 
 class Gfdludacmip6DataManager(Gfdlcmip6abcDataManager):
-    def _cmip6_root(self):
-        return os.sep + os.path.join('archive','pcmdi','repo','CMIP6')
+    _cmip6_root = os.sep + os.path.join('archive','pcmdi','repo','CMIP6')
 
 class Gfdldatacmip6DataManager(Gfdlcmip6abcDataManager):
     # Kris says /data_cmip6 used to stage pre-publication data, so shouldn't
     # be used as a data source unless explicitly requested by user
-    def _cmip6_root(self):
-        return os.sep + os.path.join('data_cmip6','CMIP6')
+    _cmip6_root = os.sep + os.path.join('data_cmip6','CMIP6')
 
 
 def gcp_wrapper(source_path, dest_dir, timeout=0, dry_run=False):
