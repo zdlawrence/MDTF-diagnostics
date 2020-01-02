@@ -34,31 +34,30 @@ def interp_vit_to_viv_monthly(model,DIR_in,DIR_out):
     '''
     ----------------------------------------------------------------------
     Note
-       Volume Transport
+        Volume Transport
     ----------------------------------------------------------------------
     '''
     import os
     import glob
-    import shutil 
-    import subprocess
+    import shutil
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"interp_vit_to_viv_monthly.ncl"
     sname=os.path.splitext(os.path.basename(script))[0]
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+os.environ["vmo_var"]+"_??????-??????.mon*.nc")
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
-       for nc in ncs:
-          print "nc: "+nc
-          npos = nc.index('.mon')
-          yyyymm = nc[npos-13:npos]
-          yyyy0 = yyyymm[0:4]
-          yyyy1 = yyyymm[7:11]
-          print yyyymm, yyyy0, yyyy1          
+        for nc in ncs:
+            print "nc: "+nc
+            npos = nc.index('.mon')
+            yyyymm = nc[npos-13:npos]
+            yyyy0 = yyyymm[0:4]
+            yyyy1 = yyyymm[7:11]
+            print yyyymm, yyyy0, yyyy1
 
-          ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
-          shutil.copy(script,ncl)
-          os.environ["YYYY"] = yyyy0
-          os.environ["YYYYMM"] = yyyymm
-          print("COMPUTING interpolation from T-grid to V-grid")
-          execute_ncl_calculate(ncl)
-          os.system("rm -f "+ncl)
+            ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
+            shutil.copy(script,ncl)
+            os.environ["YYYY"] = yyyy0
+            os.environ["YYYYMM"] = yyyymm
+            print("COMPUTING interpolation from T-grid to V-grid")
+            execute_ncl_calculate(ncl)
+            os.system("rm -f "+ncl)

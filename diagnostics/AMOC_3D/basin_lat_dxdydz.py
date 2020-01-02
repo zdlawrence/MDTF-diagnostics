@@ -44,10 +44,10 @@ DIR_in=os.environ["MONDIR"]
 DIR_out=os.environ["OUTDIR"]
 
 if len(glob.glob(os.environ["OUTDIR"]+model+".*.fx.nc"))==8:
-   print("BASIN INDEX lat dxdydz exists. Skip package basin_lat_dxdydz.py")
-   exit()
+    print("BASIN INDEX lat dxdydz exists. Skip package basin_lat_dxdydz.py")
+    exit()
 else:
-   print("Creating BASIN INDEX lat dxdydz ...")
+    print("Creating BASIN INDEX lat dxdydz ...")
 
 
 vo_nc = os.environ["MONDIR"]+os.environ["CASENAME"]+"."+os.environ["vo_var"]+".mon.nc"

@@ -2,14 +2,14 @@
 # ======================================================================
 # create_BASIN.py
 #
-#   Create Surface land/basin Mask
+#    Create Surface land/basin Mask
 #    as part of functionality provided by (basin_lat_dxdydz.py)
 #
-#   Version 1 revision 2 8-Jan-2017 Fuchang Wang (FSU/COAPS)
-#   Contributors: 
-#   PI: Xiaobiao Xu (FSU/COAPS)
+#    Version 1 revision 2 8-Jan-2017 Fuchang Wang (FSU/COAPS)
+#    Contributors: 
+#    PI: Xiaobiao Xu (FSU/COAPS)
 #
-#   Method:
+#    Method:
 #    Predefined basin Mask with 0.1 degree resolution (LICOM) is used as reference
 #     (1) Assign nearest LICOM geographical mask to model's (i,j)
 #         if (i,j) is sea in model but land in LICOM, we use assign nearby basin index to this grid
@@ -18,10 +18,10 @@
 #       like velocity, makeing it hard to distinguish (i,j) is land or not. However, if it's sea,
 #       it won't be 0 forever and won't be 0 within all column.
 #       
-#   Generates plots of:
+#    Generates plots of:
 #    (1) xy map of basin mask (basin_xy_plot.ncl)
-#   
-#   The following 3 variables are required:
+#
+#    The following 3 variables are required:
 #     (1) 2D referenced basin mask (ind, units: "1", /obs_data/basin_lat_dxdydz/)
 #     (2) 4D velocity (vo, units: m/s, models outputs)
 #     (3) 4D salinity (so, units: psu or g/kg or kg/kg, models outputs)
@@ -32,12 +32,11 @@ def create_BASIN(model,DIR_out,fname):
     '''
     ----------------------------------------------------------------------
     Note
-       surface basin index
+        surface basin index
     ----------------------------------------------------------------------
     '''
     import os
-    import shutil 
-    import subprocess
+    import shutil
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"create_BASIN_step1.ncl"
     sname=os.path.splitext(os.path.basename(script))[0]
@@ -67,24 +66,24 @@ def create_BASIN(model,DIR_out,fname):
 # ======================================================================
 # create_INDEX.py
 #
-#   Create 3D land/basin Mask
+#    Create 3D land/basin Mask
 #    as part of functionality provided by (basin_lat_dxdydz.py)
 #
-#   Version 1 revision 2 8-Jan-2017 Fuchang Wang (FSU/COAPS)
-#   Contributors: 
-#   PI: Xiaobiao Xu (FSU/COAPS)
+#    Version 1 revision 2 8-Jan-2017 Fuchang Wang (FSU/COAPS)
+#    Contributors: 
+#    PI: Xiaobiao Xu (FSU/COAPS)
 #
-#   Method:
+#    Method:
 #    Use calculated model's basin Mask as reference
 #     (1) Assign all levels' mask same as surface
 #     (2) Identify model's land grids and set them to missing value
 #       For those whose variables over land is 0 instead of missing value, how to identify land?
 #       same as create_BASIN.py does. If all time-span and all column are 0, then it is land.
 #       
-#   Depends on the following scripts:
+#    Depends on the following scripts:
 #    (1) create_BASIN.py
-#   
-#   The following 3 variables are required:
+#
+#    The following 3 variables are required:
 #     (1) 2D calculated basin mask (ind, units: "1", create_BASIN.py)
 #     (2) 4D velocity (vo, units: m/s, models outputs)
 #     (3) 4D salinity (so, units: psu or g/kg or kg/kg, models outputs)
@@ -95,12 +94,11 @@ def create_INDEX(model,DIR_out,fname):
     '''
     ----------------------------------------------------------------------
     Note
-       3D basin index
+        3D basin index
     ----------------------------------------------------------------------
     '''
     import os
-    import shutil 
-    import subprocess
+    import shutil
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"create_INDEX.ncl"
     sname=os.path.splitext(os.path.basename(script))[0]

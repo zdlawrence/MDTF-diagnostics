@@ -40,8 +40,7 @@ def trans_wgt_TS_yearly(model):
     '''
     import os
     import glob
-    import shutil 
-    import subprocess
+    import shutil
     from post_process import execute_ncl_calculate
 #    print model,DIR_in,DIR_out
     script=os.environ["SRCDIR"]+"trans_wgt_TS_yearly.ncl"
@@ -49,18 +48,18 @@ def trans_wgt_TS_yearly(model):
     ncs = glob.glob(os.environ["TMPDIR"]+model+".trans_????-????.yr.nc")
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
-       for nc in ncs:
+        for nc in ncs:
 #          print nc
-          npos = nc.index('.yr.nc')
-          yyyymm = nc[npos-9:npos]
-          yyyy0 = yyyymm[0:4]
-          yyyy1 = yyyymm[5:9]
-          print yyyymm, yyyy0, yyyy1
+            npos = nc.index('.yr.nc')
+            yyyymm = nc[npos-9:npos]
+            yyyy0 = yyyymm[0:4]
+            yyyy1 = yyyymm[5:9]
+            print yyyymm, yyyy0, yyyy1
 
-          ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+yyyymm+".ncl"
-          shutil.copy(script,ncl)
-          os.environ["YYYYMM"] = yyyymm
-          os.environ["YEAR0"] = yyyy0
-          print("COMPUTING Yearly Mean from Monthly ... "+model)
-          execute_ncl_calculate(ncl)
-          os.system("rm -f "+ncl)
+            ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+yyyymm+".ncl"
+            shutil.copy(script,ncl)
+            os.environ["YYYYMM"] = yyyymm
+            os.environ["YEAR0"] = yyyy0
+            print("COMPUTING Yearly Mean from Monthly ... "+model)
+            execute_ncl_calculate(ncl)
+            os.system("rm -f "+ncl)
