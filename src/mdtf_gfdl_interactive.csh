@@ -13,11 +13,11 @@
 # ------------------------------------------------------------------------------
 
 ## set paths
-set REPO_DIR=/home/Oar.Gfdl.Mdteam/DET/analysis/mdtf/MDTF-diagnostics
-set OBS_DATA_DIR=/home/Oar.Gfdl.Mdteam/DET/analysis/mdtf/obs_data
-set INPUT_DIR=${TMPDIR}/inputdata
-set WK_DIR=${TMPDIR}/wkdir
-set out_dir=${HOME}
+set REPO_DIR="/home/Oar.Gfdl.Mdteam/DET/analysis/mdtf/MDTF-diagnostics"
+set OBS_DATA_DIR="/home/Oar.Gfdl.Mdteam/DET/analysis/mdtf/obs_data"
+set INPUT_DIR="${TMPDIR}/inputdata"
+set WK_DIR="${TMPDIR}/wkdir"
+set out_dir="${HOME}/mdtf_out"
 
 ## parse command line arguments
 # NB analysis doesn't have getopts
@@ -106,27 +106,6 @@ end
 ## clean up tmpdir
 wipetmp
 
-## fetch obs data from local source
-echo 'Fetching observational data'
-mkdir -p "${INPUT_DIR}"
-mkdir -p "${WK_DIR}"
-mkdir "${INPUT_DIR}/model"
-gcp -v -r "gfdl:${OBS_DATA_DIR}/" "gfdl:${INPUT_DIR}/obs_data/"
-
-## make sure we have python dependencies
-${REPO_DIR}/src/validate_environment.sh -v -a subprocess32 -a pyyaml
-if ( $status != 0 ) then
-    echo 'Installing required modules'
-    mkdir -p "${REPO_DIR}/envs/venv"
-    python -m pip install --user virtualenv
-    python -m virtualenv "${REPO_DIR}/envs/venv/base"
-    source "${REPO_DIR}/envs/venv/base/bin/activate"
-    # pip --user redundant/not valid in a virtualenv
-    pip install --disable-pip-version-check subprocess32 pyyaml
-else
-    echo 'Found required modules'
-endif
-
 ## Clean output subdirectory
 set mdtf_dir="MDTF_${descriptor}_${yr1}_${yr2}"
 if ( -d "${out_dir}/${mdtf_dir}" ) then
@@ -136,13 +115,13 @@ endif
 
 ## run the command (unbuffered output)
 echo 'script start'
-/usr/bin/env python -u "${REPO_DIR}/src/mdtf.py" \
+/usr/bin/env python -u "${REPO_DIR}/src/mdtf_gfdl.py" \
 --MODEL_DATA_ROOT "${INPUT_DIR}/model" \
 --OBS_DATA_ROOT "${INPUT_DIR}/obs_data" \
 --WORKING_DIR "$WK_DIR" \
 --OUTPUT_DIR "$out_dir" \
 --data_manager "GfdlPP" \
---environment_manager "GfdlVirtualenv" \
+--environment_manager "GfdlConda" \
 --CASENAME "$descriptor" \
 --CASE_ROOT_DIR "$PP_DIR" \
 --FIRSTYR $yr1 \
