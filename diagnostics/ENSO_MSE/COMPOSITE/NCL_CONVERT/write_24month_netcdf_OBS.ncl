@@ -28,7 +28,7 @@ begin
 
      mode = (/ "ELNINO", "LANINA" /)
 
-      parameter_name = varcode + "/COMPOSITE/parameters.txt"
+      parameter_name = varcode + "/shared/parameters.txt"
       name_dimensions = outdir  + "/netCDF/DATA/xyz_dimensions.txt"
       name_lon = outdir + "/netCDF/DATA/longitude.out"
       name_lat = outdir + "/netCDF/DATA/latitude.out"
@@ -119,7 +119,6 @@ begin
        datain3@units     = varunits3(iv)
        datain3@long_name = long_name3(iv)
 
-       fin = addfile( namein, "r")
        datain3  = fbindirread (namein, 0, dims3 , "float")
 ;;  set the dimensions and units 
 ;===================================================================
@@ -156,8 +155,7 @@ begin
        fout->lat    = (/lat/)
        fout->lon    = (/lon/) 
        fout->$varnames3(iv)$  = (/datain3/)
-       delete( fout) 
-       delete( fin)
+       delete( fout)
        
       end do  ;;  over 3D variables 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -172,7 +170,6 @@ begin
        datain2@units     = varunits2(iv)
        datain2@long_name = long_name2(iv)
 
-       fin = addfile( namein, "r")
        datain2  = fbindirread (namein, 0, dims2 , "float")
        if( variables2(iv) .eq.  "PR") 
 	  datain2  =  datain2  * pr_conversion
@@ -210,7 +207,6 @@ begin
        fout->lon    = (/lon/)
        fout->$varnames2(iv)$  = (/datain2/)
        delete( fout)
-       delete( fin)
 
       end do  ;;  over 2D variables
     

@@ -1,15 +1,16 @@
 import numpy as np
 import sys
 import math
-
-from generate_ncl_plots import generate_ncl_plots
-from generate_ncl_call import generate_ncl_call
-
 import datetime
  
 import os
-
+shared_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'shared'
+)
+os.sys.path.insert(0, shared_dir)
 from util import check_required_dirs
+from generate_ncl_call import generate_ncl_call
 
 '''
     to pre-process the data for the diagnostic package 
