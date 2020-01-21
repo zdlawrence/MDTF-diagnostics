@@ -20,12 +20,6 @@ lat_coord = getenv("lat_coord")
 lon_coord = getenv("lon_coord")
 lev_coord = getenv("lev_coord")
 
-
-lat_var = getenv("lat_var")
-lon_var = getenv("lon_var")
-time_var = getenv("time_var")
-lev_var = getenv("lev_var")
-
 file_path = getenv("DATADIR")
 
 zg_var = getenv("zg_var")
@@ -39,10 +33,10 @@ else
 
 f_zg = addfile(file_path+"/mon/"+casename+"."+zg_var+".mon.nc","r")
 
-time = f_zg->$time_var$
-lat = f_zg->$lat_var$
-lon = f_zg->$lon_var$
-lev = f_zg->$lev_var$
+time = f_zg->$time_coord$
+lat = f_zg->$lat_coord$
+lon = f_zg->$lon_coord$
+lev = f_zg->$lev_coord$
 nlat = dimsizes(lat)
 nlon = dimsizes(lon)
 
@@ -60,7 +54,7 @@ do i=0,nlat-1
  gw(i) = sin(slat(i+1)/180.d0*pi)-sin(slat(i)/180.d0*pi)
 end do
 
-time_all = f_zg->$time_var$
+time_all = f_zg->$time_coord$
 date_all = ut_calendar(time_all,-1)
 year_all = date_all/100
 iLev = ind(lev.eq.50000)
