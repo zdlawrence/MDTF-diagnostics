@@ -215,14 +215,30 @@ class Diagnostic(object):
 
         # Set env vars for variable and axis names:
         axes = dict()
+        ax_status = dict()
         for var in self.iter_vars_and_alts():
             util.setenv(var.original_name, var.name_in_model, 
                 self.pod_env_vars, verbose=verbose)
+            # make sure axes found for different vars are consistent
             for ax_name, ax_attrs in var.axes.iteritems():
-                envvar_name = ax_attrs.get('envvar', ax_name+'_coord') # should raise warning
+                if 'MDTF_envvar' not in ax_attrs:
+                    print "\tWarning: don't know env var to set for axis name {}".format(ax_name)
+                    envvar_name = ax_name+'_coord'
+                else:
+                    envvar_name = ax_attrs['MDTF_envvar']
+                set_from_axis = ax_attrs.get('MDTF_set_from_axis', None)
                 if envvar_name not in axes:
+                    # populate dict
                     axes[envvar_name] = ax_name
-                elif axes[envvar_name] != ax_name:
+                    ax_status[envvar_name] = set_from_axis
+                elif axes[envvar_name] != ax_name and ax_status[envvar_name] is None:
+                    # populated with defaults, but now overwrite with name that
+                    # was confirmed from file
+                    axes[envvar_name] = ax_name
+                    ax_status[envvar_name] = set_from_axis
+                elif axes[envvar_name] != ax_name \
+                    and ax_status[envvar_name] == set_from_axis:
+                    # names found in two different files disagree - raise error
                     raise PodRequirementFailure(self,
                         "Two variables have conflicting axis names {}:({}!={})".format(
                         envvar_name, axes[envvar_name], ax_name

@@ -450,33 +450,44 @@ class GfdlarchiveDataManager(DataManager):
         for fax, fax_attrs in file_axes.iteritems():
             # update DataSets with axis info - need to loop since multiple PODs
             # may reference this file (warning will be repeated; TODO fix that)
+            error_flag = 0
             for var in self.data_keys[d_key]: 
                 if fax in var.axes:
                     # file's axis in list of case's axis names; check their
                     # axis attributes match if they're both defined
                     if 'axis' in fax_attrs and 'axis' in var.axes[fax] \
-                        and fax_attrs['axis'].lower() != var.axes[fax]['axis'].lower():
-                        print """\tWarning: unexpected axis attribute for {} in {} (found {}, {} convention is {})""".format(
+                        and fax_attrs['axis'].lower() != var.axes[fax]['axis'].lower() \
+                        and error_flag != 1:
+                        print "\tWarning: unexpected axis attribute for {} in {} (found {}, {} convention is {})".format(
                                 fax, file_name, fax_attrs['axis'], 
                                 self.convention, var.axes[fax]['axis']
                             )
+                        error_flag = 1
+                    var.axes[fax]['MDTF_set_from_axis'] = False
                 else: 
                     # file has different axis name, try to match by attribute
                     for vax, vax_attrs in var.axes.iteritems():
                         if 'axis' not in fax_attrs or 'axis' not in vax_attrs:
                             continue
                         elif vax_attrs['axis'].lower() == fax_attrs['axis'].lower():
-                            # log warning & reassign
-                            print """\tWarning: unexpected {} axis name in {} (found {}, {} convention is {})""".format(
-                                    fax_attrs['axis'], file_name, fax, self.convention, vax
-                                )
+                            # matched axis attributes: log warning & reassign
+                            if error_flag != 2:
+                                print "\tWarning: unexpected {} axis name in {} (found {}, {} convention is {})".format(
+                                        fax_attrs['axis'], file_name, fax, self.convention, vax
+                                    )
+                                error_flag = 2
+                            # only update so we don't overwrite the envvar name
+                            var.axes[fax] = vax_attrs.copy()
+                            var.axes[fax].update(fax_attrs)
+                            var.axes[fax]['MDTF_set_from_axis'] = True
                             del var.axes[vax]
-                            var.axes[fax] = fax_attrs.copy()
                             break
                     else:
                         # get here if we didn't hit 'break' above -- give up
-                        print "\tWarning: unable to assign {} axis in {}.".format(
-                            fax, file_name)
+                        if error_flag != 3:
+                            print "\tWarning: unable to assign {} axis in {}.".format(
+                                fax, file_name)
+                            error_flag = 3
 
         # crop time axis to requested range
         # do this *before* combining chunks to reduce disk activity
