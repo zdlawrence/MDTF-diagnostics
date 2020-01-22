@@ -30,6 +30,8 @@ begin
   ps_dir = getenv("WK_DIR")+"/model/PS/"
   firstyr = stringtoint(getenv("FIRSTYR"))
   lastyr = stringtoint(getenv("LASTYR"))
+  print(firstyr)
+  print(lastyr)
 ;;;;; For model only   ;;;;;
   model_fstruc = 0 ; Model file structure; 0 = single files; 1 = many files.
 
@@ -42,6 +44,7 @@ begin
   obs = (/False/)   ; True-obs, False-model. (TRMM-3B42-3HRLY assumed for obs. in separate monthly files.)
 ;  mrun_years = (/2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010/)
    mrun_years = ispan(firstyr,lastyr,1)
+   print(mrun_years)
 ;  orun_years = (/2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010/)
 
 

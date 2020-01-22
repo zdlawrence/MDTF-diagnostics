@@ -134,7 +134,6 @@ husm!2="lon"
 husm&time=time
 husm&lat=newlat
 husm&lon=newlon
-printMinMax(husm,0)
 
 print("Writing "+wk_dir+"/model/netCDF/model_hus_900_650_avg.nc")
 system("rm -f "+wk_dir+"/model/netCDF/model_hus_900_650_avg.nc")
