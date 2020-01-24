@@ -515,7 +515,9 @@ class GfdlarchiveDataManager(DataManager):
                     time_var_name, trimmed_range, 
                     in_file=file_name, cwd=work_dir, dry_run=self.dry_run
                 )
-        assert trim_count <= 2
+        if trim_count > 2:
+            print("trimmed {} files!".format(trim_count))
+            raise AssertionError()
 
         # cat chunks to destination, if more than one
         if len(remote_files) > 1:
