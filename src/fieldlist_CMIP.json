@@ -74,6 +74,7 @@
     "# factor * [model native unit] = flux in kg m-2 s-1  _________________":"",
     "pr_conversion_factor" : 1,
     "prc_conversion_factor" : 1,
-    "prls_conversion_factor" : 1
+    "prls_conversion_factor" : 1,
+    "date_int_offset" : 0
   }
 }
