@@ -850,7 +850,7 @@ def gcp_wrapper(source_path, dest_dir, timeout=0, dry_run=False):
     else:
         source = ['gfdl:' + source_path]
         dest = ['gfdl:' + dest_dir + os.sep]
-    print '\tDEBUG: GCP {} -> {}'.format(source[-1], dest[-1])
+    print('\tDEBUG: GCP {} -> {}'.format(source[-1], dest[-1]))
     util.run_command(
         ['gcp', '-sync', '-v', '-cd'] + source + dest,
         timeout=timeout, 
