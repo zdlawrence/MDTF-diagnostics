@@ -206,7 +206,7 @@ class GfdlcondaEnvironmentManager(CondaEnvironmentManager):
         keys = [s.lower() for s in pod.required_programs]
         if 'ncks' in keys or 'nco' in keys:
             modMgr = ModuleManager()
-            mod_list = modMgr.load_commands(['nco'])
+            mod_list = modMgr.load_commands('nco')
             return ['source $MODULESHOME/init/bash'] + mod_list + cmds
         else:
             return cmds
