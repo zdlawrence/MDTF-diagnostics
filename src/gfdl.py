@@ -200,6 +200,17 @@ class GfdlcondaEnvironmentManager(CondaEnvironmentManager):
             "in read-only mdteam account.").format(env_name)
         )
 
+    def activate_env_commands(self, pod):
+        # hack to make sure NCO gets loaded
+        cmds = super(GfdlcondaEnvironmentManager, self).activate_env_commands(pod)
+        keys = [s.lower() for s in pod.required_programs]
+        if 'ncks' in keys or 'nco' in keys:
+            modMgr = ModuleManager()
+            mod_list = modMgr.load_commands(['nco'])
+            return ['source $MODULESHOME/init/bash'] + mod_list + cmds
+        else:
+            return cmds
+
 def GfdlautoDataManager(case_dict, config={}, DateFreqMixin=None):
     """Wrapper for dispatching DataManager based on inputs.
     """
