@@ -163,7 +163,7 @@ class GfdlvirtualenvEnvironmentManager(VirtualenvEnvironmentManager):
         'r_default': ['r'],
         'py_default': ['python'],
         'py_convective_transition_diag': ['python', 'ncl'],
-        'ncl_MJO_suite': ['ncl', 'nco']
+        'ncl_MJO_suite': ['python', 'ncl']
     }
 
     def create_environment(self, env_name):
@@ -199,17 +199,6 @@ class GfdlcondaEnvironmentManager(CondaEnvironmentManager):
         raise Exception(("Trying to create conda env {} "
             "in read-only mdteam account.").format(env_name)
         )
-
-    def activate_env_commands(self, pod):
-        # hack to make sure NCO gets loaded
-        cmds = super(GfdlcondaEnvironmentManager, self).activate_env_commands(pod)
-        keys = [s.lower() for s in pod.required_programs]
-        if 'ncks' in keys or 'nco' in keys:
-            modMgr = ModuleManager()
-            mod_list = modMgr.load_commands('nco')
-            return ['source $MODULESHOME/init/bash'] + mod_list + cmds
-        else:
-            return cmds
 
 def GfdlautoDataManager(case_dict, config={}, DateFreqMixin=None):
     """Wrapper for dispatching DataManager based on inputs.
@@ -250,7 +239,7 @@ class GfdlarchiveDataManager(DataManager):
     def __init__(self, case_dict, config={}, DateFreqMixin=None):
         # load required modules
         modMgr = ModuleManager()
-        modMgr.load('gcp', 'nco') # should refactor
+        modMgr.load('gcp') # should refactor
         config['settings']['netcdf_helper'] = 'NcoNetcdfHelper'
         self.coop_mode = config['settings']['frepp']
 

@@ -5,5 +5,5 @@ channels:
 dependencies:
 - python=2.7
 - subprocess32
+- nco>=4.7.6,<=4.8.1
 - mock
-- netCDF4
