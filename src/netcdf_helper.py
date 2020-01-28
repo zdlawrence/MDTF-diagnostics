@@ -45,49 +45,48 @@ class NetcdfHelper(object):
             manipulation wrapper functions, and shouldn't be called directly."""
             )
 
+def _nco_outfile_decorator(function):
+    """Wrapper handling cleanup for NCO operations that modify files.
+    NB must come between classmethod and base function definition.
+    See https://stackoverflow.com/a/18732038. 
+    """
+    def wrapper(*args, **kwargs):
+        if 'out_file' not in kwargs or kwargs['out_file'] is None:
+            kwargs['out_file'] = 'MDTF_NCO_temp.nc'
+            move_back = True
+        else:
+            move_back = False
+        if 'cwd' not in kwargs:
+            kwargs['cwd'] = None
+        if 'in_file' not in kwargs:
+            print("nchelper didn't get in_file: {}".format(kwargs))
+            raise AssertionError()
+        
+        # only pass func the keyword arguments it accepts
+        named_args = function.func_code.co_varnames
+        fkwargs = dict((k, kwargs[k]) for k in named_args if k in kwargs)
+        result = function(*args, **fkwargs)
+        
+        if move_back:
+            # manually move file back 
+            if kwargs.get('dry_run', False):
+                print('DRY_RUN: move {} to {}'.format(
+                    kwargs['out_file'], kwargs['in_file']))
+            else:
+                if kwargs['cwd']:
+                    cwd = os.getcwd()
+                    os.chdir(kwargs['cwd'])
+                os.remove(kwargs['in_file'])
+                shutil.move(kwargs['out_file'], kwargs['in_file'])
+                if kwargs['cwd']:
+                    os.chdir(cwd)
+        return result
+    return wrapper
 
 class NcoNetcdfHelper(NetcdfHelper):
     # Just calls command-line utilities, doesn't use PyNCO bindings
 
     _run_command = util.run_command
-
-    def _outfile_decorator(function):
-        """Wrapper handling cleanup for NCO operations that modify files.
-        NB must come between classmethod and base function definition.
-        See https://stackoverflow.com/a/18732038. 
-        """
-        def wrapper(*args, **kwargs):
-            if 'out_file' not in kwargs or kwargs['out_file'] is None:
-                kwargs['out_file'] = 'MDTF_NCO_temp.nc'
-                move_back = True
-            else:
-                move_back = False
-            if 'cwd' not in kwargs:
-                kwargs['cwd'] = None
-            if 'in_file' not in kwargs:
-                print("nchelper didn't get in_file: {}".format(kwargs))
-                raise AssertionError()
-            
-            # only pass func the keyword arguments it accepts
-            named_args = function.func_code.co_varnames
-            fkwargs = dict((k, kwargs[k]) for k in named_args if k in kwargs)
-            result = function(*args, **fkwargs)
-            
-            if move_back:
-                # manually move file back 
-                if kwargs.get('dry_run', False):
-                    print('DRY_RUN: move {} to {}'.format(
-                        kwargs['out_file'], kwargs['in_file']))
-                else:
-                    if kwargs['cwd']:
-                        cwd = os.getcwd()
-                        os.chdir(kwargs['cwd'])
-                    os.remove(kwargs['in_file'])
-                    shutil.move(kwargs['out_file'], kwargs['in_file'])
-                    if kwargs['cwd']:
-                        os.chdir(cwd)
-            return result
-        return wrapper
 
     @classmethod
     def nc_check_environ(cls):
@@ -103,7 +102,7 @@ class NcoNetcdfHelper(NetcdfHelper):
         )
 
     @classmethod
-    @_outfile_decorator
+    @_nco_outfile_decorator
     def nc_crop_time_axis(cls, time_var_name, date_range, 
         in_file=None, out_file=None, cwd=None, dry_run=False):
         # don't need to quote time strings in args to ncks because it's not 
@@ -173,7 +172,7 @@ class NcoNetcdfHelper(NetcdfHelper):
         return dd
 
     @classmethod
-    @_outfile_decorator
+    @_nco_outfile_decorator
     def nc_change_variable_units(cls, new_units_dict,
         in_file=None, out_file=None, cwd=None, dry_run=False):
         """Unit conversion of several variables in a file.
@@ -261,7 +260,7 @@ class CondancoNetcdfHelper(NcoNetcdfHelper):
     _run_command = run_conda_command
 
     @classmethod
-    @_outfile_decorator
+    @_nco_outfile_decorator
     def nc_crop_time_axis(cls, time_var_name, date_range, 
         in_file=None, out_file=None, cwd=None, dry_run=False):
         # now we need to quote time strings
