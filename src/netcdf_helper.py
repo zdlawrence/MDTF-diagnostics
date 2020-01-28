@@ -1,6 +1,14 @@
 from __future__ import print_function
 import os
+import sys
 import shutil
+if os.name == 'posix' and sys.version_info[0] < 3:
+    try:
+        import subprocess32 as subprocess
+    except ImportError:
+        import subprocess
+else:
+    import subprocess
 import datelabel
 import util
 
@@ -11,27 +19,27 @@ class NetcdfHelper(object):
             manipulation wrapper functions, and shouldn't be called directly."""
             )
 
-    @staticmethod
-    def nc_check_environ():
+    @classmethod
+    def nc_check_environ(cls):
         pass
 
-    @staticmethod
-    def nc_cat_chunks(chunk_list, out_file=None, cwd=None, dry_run=False):
+    @classmethod
+    def nc_cat_chunks(cls, chunk_list, out_file=None, cwd=None, dry_run=False):
         raise NotImplementedError(
             """NetcdfHelper is a stub defining method signatures for netcdf 
             manipulation wrapper functions, and shouldn't be called directly."""
             )
 
-    @staticmethod
-    def nc_crop_time_axis(time_var_name, date_range, 
+    @classmethod
+    def nc_crop_time_axis(cls, time_var_name, date_range, 
         in_file=None, out_file=None, cwd=None, dry_run=False):
         raise NotImplementedError(
             """NetcdfHelper is a stub defining method signatures for netcdf 
             manipulation wrapper functions, and shouldn't be called directly."""
             )
 
-    @staticmethod
-    def nc_extract_level():
+    @classmethod
+    def nc_extract_level(cls):
         raise NotImplementedError(
             """NetcdfHelper is a stub defining method signatures for netcdf 
             manipulation wrapper functions, and shouldn't be called directly."""
@@ -41,9 +49,11 @@ class NetcdfHelper(object):
 class NcoNetcdfHelper(NetcdfHelper):
     # Just calls command-line utilities, doesn't use PyNCO bindings
 
+    _run_command = util.run_command
+
     def _outfile_decorator(function):
         """Wrapper handling cleanup for NCO operations that modify files.
-        NB must come between staticmethod and base function definition.
+        NB must come between classmethod and base function definition.
         See https://stackoverflow.com/a/18732038. 
         """
         def wrapper(*args, **kwargs):
@@ -79,27 +89,27 @@ class NcoNetcdfHelper(NetcdfHelper):
             return result
         return wrapper
 
-    @staticmethod
-    def nc_check_environ():
+    @classmethod
+    def nc_check_environ(cls):
         # check nco exists
         if not util.check_executable('ncks'):
             raise OSError('NCO utilities not found on $PATH.')
 
-    @staticmethod
-    def nc_cat_chunks(chunk_list, out_file=None, cwd=None, dry_run=False):
+    @classmethod
+    def nc_cat_chunks(cls, chunk_list, out_file=None, cwd=None, dry_run=False):
         # not running in shell, so can't use glob expansion.
-        util.run_command(['ncrcat', '--no_tmp_fl', '-O'] + chunk_list + [out_file], 
+        cls._run_command(['ncrcat', '-O'] + chunk_list + [out_file], 
             cwd=cwd, dry_run=dry_run
         )
 
-    @staticmethod
+    @classmethod
     @_outfile_decorator
-    def nc_crop_time_axis(time_var_name, date_range, 
+    def nc_crop_time_axis(cls, time_var_name, date_range, 
         in_file=None, out_file=None, cwd=None, dry_run=False):
         # don't need to quote time strings in args to ncks because it's not 
         # being called by a shell
-        util.run_command(
-            ['ncks', '--no_tmp_fl', '-O', '-d', "{},{},{}".format(
+        cls._run_command(
+            ['ncks', '-O', '-d', "{},{},{}".format(
                 time_var_name, 
                 date_range.start.isoformat(),
                 date_range.end.isoformat()
@@ -107,12 +117,12 @@ class NcoNetcdfHelper(NetcdfHelper):
             cwd=cwd, dry_run=dry_run
         )
 
-    @staticmethod
-    def ncdump_h(in_file=None, cwd=None, dry_run=False):
+    @classmethod
+    def ncdump_h(cls, in_file=None, cwd=None, dry_run=False):
         """Return header information for all variables in a file.
         """
         # JSON output for -m is malformed in NCO <=4.5.4, verified OK for 4.7.6
-        json_str = util.run_command(
+        json_str = cls._run_command(
             ['ncks', '--jsn', '-m', in_file],
             cwd=cwd, dry_run=dry_run
         )
@@ -185,19 +195,85 @@ class NcoNetcdfHelper(NetcdfHelper):
         cmd_string = '{var}=udunits({var},"{unit}");{var}@units="{unit}";'
         cmds = [cmd_string.format(var=k, unit=v) for k,v in dd.iteritems()]
         if cmds:
-            util.run_command(
+            cls._run_command(
                 ['ncap2', '-O', '-s', ''.join(cmds), in_file, out_file],
                 cwd=cwd, dry_run=dry_run
             )
 
-    @staticmethod
-    def nc_dump_axis(ax_name, in_file=None, cwd=None, dry_run=False):
+    @classmethod
+    def nc_dump_axis(cls, ax_name, in_file=None, cwd=None, dry_run=False):
         # OK for 4.7.6, works on 4.5.4 if "--trd" flag removed
-        ax_vals = util.run_command(
+        ax_vals = cls._run_command(
             ['ncks','--trd','-H','-V','-v', ax_name, in_file],
             cwd=cwd, dry_run=dry_run
         )
         return [float(val) for val in ax_vals if val]
+
+
+class CondancoNetcdfHelper(NcoNetcdfHelper):
+    # Just calls command-line utilities, doesn't use PyNCO bindings
+
+    @staticmethod
+    def run_conda_command(command,
+        env=None, cwd=None, timeout=0, dry_run=False):
+        paths = util.PathManager()
+        if type(command) != str:
+            # quote arguments with spaces
+            # need to do more (escaping etc.) for this to be bulletproof
+            #command = ' '.join(["'"+s+"'" if (' ' in s) else s for s in command])
+            command = ' '.join(command)
+        # Following workaround needed for Anaconda UDUnits on tcsh only
+        # see https://github.com/conda-forge/nco-feedstock/issues/103
+        # if not os.environ.get('UDUNITS2_XML_PATH', None):
+        #     os.environ['UDUNITS2_XML_PATH'] = \
+        #         os.environ['CONDA_PREFIX'] + "/share/udunits/udunits2.xml"
+        command = 'source {}/src/conda_init.sh {} && conda activate {} && {}'.format(
+            paths.CODE_ROOT, paths.conda_root, 
+            os.path.join(paths.conda_env_root, '_MDTF-diagnostics-base'),
+            command
+        )
+        print('\tDEBUG: '+command)
+        proc = subprocess.Popen(['bash', '-c', command],
+            shell=False, env=env, cwd=cwd,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True, bufsize=0
+        )
+        pid = proc.pid
+        # Tried many scenarios for executing commands sequentially 
+        # (eg with stdin.write()) but couldn't find a solution that wasn't 
+        # susceptible to deadlocks. Instead just hand over all commands at once.
+        # Only disadvantage is that we lose the ability to assign output to a specfic
+        # command.
+        #(stdout, stderr) = proc.communicate(' && '.join(commands))
+        (stdout, stderr) = proc.communicate()
+        retcode = proc.returncode
+        if retcode != 0:
+            print('run_conda_command on {} (pid {}) exit status={}:{}\n'.format(
+                command, pid, retcode, stderr
+            ))
+            raise subprocess.CalledProcessError(
+                returncode=retcode, cmd=command, output=stderr)
+        if '\0' in stdout:
+            return stdout.split('\0')
+        else:
+            return stdout.splitlines()
+
+    _run_command = run_conda_command
+
+    @classmethod
+    @_outfile_decorator
+    def nc_crop_time_axis(cls, time_var_name, date_range, 
+        in_file=None, out_file=None, cwd=None, dry_run=False):
+        # now we need to quote time strings
+        cls._run_command(
+            ['ncks', '-O', '-d', "{},'{}','{}'".format(
+                time_var_name, 
+                date_range.start.isoformat(),
+                date_range.end.isoformat()
+            ), in_file, out_file],
+            cwd=cwd, dry_run=dry_run
+        )
+
 
 class CdoNetcdfHelper(NetcdfHelper):
     pass
