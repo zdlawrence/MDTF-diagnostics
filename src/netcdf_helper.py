@@ -45,6 +45,45 @@ class NetcdfHelper(object):
             manipulation wrapper functions, and shouldn't be called directly."""
             )
 
+    @classmethod
+    def ncdump_h(cls, in_file=None, cwd=None, dry_run=False):
+        raise NotImplementedError(
+            """NetcdfHelper is a stub defining method signatures for netcdf 
+            manipulation wrapper functions, and shouldn't be called directly."""
+            )
+
+    @classmethod
+    def nc_get_attribute(cls, attr_name, in_file=None, cwd=None, dry_run=False):
+        """Return dict of variables and values of a given attribute.
+        
+        If the attribute is not defined for the variable (or is the empty string), 
+        it's not included in the returned dict.
+        """
+        d = cls.ncdump_h(in_file=in_file, cwd=cwd, dry_run=dry_run)
+        dd = dict()
+        for var in d['variables']:
+            if d['variables'][var].get(attr_name, None):
+                dd[var] = d['variables'][var][attr_name]
+        return dd
+
+    @classmethod
+    def nc_get_axes_attributes(cls, var, in_file=None, cwd=None, dry_run=False):
+        """Return variable names corresponding to an axis attribute.
+        """
+        d = cls.ncdump_h(in_file=in_file, cwd=cwd, dry_run=dry_run)
+        dd = dict()
+        if var not in d['variables']:
+            print("Can't find variable {} in {}.".format(var, in_file))
+            return dd
+        if 'shape' not in d['variables'][var]:
+            print("Can't find shape attribute for {} in {}.".format(var, in_file))
+            return dd
+        for ax in d['variables'][var]['shape']:
+            assert ax in d['variables']
+            dd[ax] = d['variables'][ax].copy() # copy dict of all attributes
+        return dd
+
+
 def _nco_outfile_decorator(function):
     """Wrapper handling cleanup for NCO operations that modify files.
     NB must come between classmethod and base function definition.
@@ -86,7 +125,7 @@ def _nco_outfile_decorator(function):
 class NcoNetcdfHelper(NetcdfHelper):
     # Just calls command-line utilities, doesn't use PyNCO bindings
 
-    _run_command = util.run_command
+    _run_command = staticmethod(util.run_command)
 
     @classmethod
     def nc_check_environ(cls):
@@ -139,37 +178,6 @@ class NcoNetcdfHelper(NetcdfHelper):
                         d['variables'][var][k] = v
                     del d['variables'][var]['attributes']
             return d
-
-    @classmethod
-    def nc_get_attribute(cls, attr_name, in_file=None, cwd=None, dry_run=False):
-        """Return dict of variables and values of a given attribute.
-        
-        If the attribute is not defined for the variable (or is the empty string), 
-        it's not included in the returned dict.
-        """
-        d = cls.ncdump_h(in_file=in_file, cwd=cwd, dry_run=dry_run)
-        dd = dict()
-        for var in d['variables']:
-            if d['variables'][var].get(attr_name, None):
-                dd[var] = d['variables'][var][attr_name]
-        return dd
-
-    @classmethod
-    def nc_get_axes_attributes(cls, var, in_file=None, cwd=None, dry_run=False):
-        """Return variable names corresponding to an axis attribute.
-        """
-        d = cls.ncdump_h(in_file=in_file, cwd=cwd, dry_run=dry_run)
-        dd = dict()
-        if var not in d['variables']:
-            print("Can't find variable {} in {}.".format(var, in_file))
-            return dd
-        if 'shape' not in d['variables'][var]:
-            print("Can't find shape attribute for {} in {}.".format(var, in_file))
-            return dd
-        for ax in d['variables'][var]['shape']:
-            assert ax in d['variables']
-            dd[ax] = d['variables'][ax].copy() # copy dict of all attributes
-        return dd
 
     @classmethod
     @_nco_outfile_decorator
@@ -226,13 +234,14 @@ class CondancoNetcdfHelper(NcoNetcdfHelper):
         # if not os.environ.get('UDUNITS2_XML_PATH', None):
         #     os.environ['UDUNITS2_XML_PATH'] = \
         #         os.environ['CONDA_PREFIX'] + "/share/udunits/udunits2.xml"
-        command = 'source {}/src/conda_init.sh {} && conda activate {} && {}'.format(
+        command = ("source {}/src/conda_init.sh {} > /dev/null "
+            "&& conda activate {} && {}").format(
             paths.CODE_ROOT, paths.conda_root, 
             os.path.join(paths.conda_env_root, '_MDTF-diagnostics-base'),
             command
         )
         print('\tDEBUG: '+command)
-        proc = subprocess.Popen(['bash', '-c', command],
+        proc = subprocess.Popen(['bash', '-i', '-c', command],
             shell=False, env=env, cwd=cwd,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             universal_newlines=True, bufsize=0
