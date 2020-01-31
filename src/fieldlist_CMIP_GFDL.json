@@ -72,6 +72,9 @@
     "pr_conversion_factor" : 1,
     "prc_conversion_factor" : 1,
     "prls_conversion_factor" : 1,
-    "date_int_offset" : 0
+    "# 0 for CMIP/GFDL date index start, 1 for CESM native date index start ":"",
+    "date_int_offset" : 0,
+    "# pressure axis: factor * [model native unit] = pressure in Pa  ______":"",
+    "pressure_to_Pa_factor" : 1
   }
 }
