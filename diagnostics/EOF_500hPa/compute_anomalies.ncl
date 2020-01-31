@@ -90,6 +90,11 @@ win_anom&$lon_coord$ = lon
 win_anom@long_name = "Winter (DJFM) 500mb height anomaly"
 win_anom@units = "meters"
 
+; attempt to find pressure level
+iLev = ind(lev.eq.50000)
+if (ismissing(iLev)) then
+  print(" FATAL ERROR: No value equal to 50000 found in "+lev_coord+" in "+file_path+"/mon/"+casename+"."+zg_var+".mon.nc")
+end if
 
 z500 = f_zg->$zg_var$($time_coord$|i1:i2,$lev_coord$|iLev:iLev,$lat_coord$|:,$lon_coord$|:)
 ;z500 = vinth2p(z,hyam,hybm,500.,ps,2,1000.,1,False) ; (time,plev,lat,lon)
