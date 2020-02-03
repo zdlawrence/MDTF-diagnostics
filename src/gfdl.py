@@ -239,7 +239,7 @@ class GfdlarchiveDataManager(DataManager):
     def __init__(self, case_dict, config={}, DateFreqMixin=None):
         # load required modules
         modMgr = ModuleManager()
-        modMgr.load('gcp') # should refactor
+        modMgr.load('gcp', 'nco') # should refactor
         config['settings']['netcdf_helper'] = 'NcoNetcdfHelper'
         self.coop_mode = config['settings']['frepp']
 
