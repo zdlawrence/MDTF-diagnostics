@@ -7,6 +7,7 @@ import data_manager
 import environment_manager
 import gfdl
 import util
+import netcdf_helper
 from mdtf import MDTFFramework
 
 class GFDLMDTFFramework(MDTFFramework):
@@ -77,7 +78,7 @@ class GFDLMDTFFramework(MDTFFramework):
             self.Diagnostic = gfdl.GfdlDiagnostic
 
     # add gfdl to search path for DataMgr, EnvMgr
-    _dispatch_search = [data_manager, environment_manager, gfdl]
+    _dispatch_search = [data_manager, environment_manager, netcdf_helper, gfdl]
 
     def set_case_pod_list(self, case_dict):
         requested_pods = super(GFDLMDTFFramework, self).set_case_pod_list(case_dict)
