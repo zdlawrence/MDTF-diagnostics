@@ -14,6 +14,7 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
     import subprocess
 import util
+import util_mdtf
 from shared_diagnostic import PodRequirementFailure
 
 class EnvironmentManager(object):
@@ -21,7 +22,7 @@ class EnvironmentManager(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, config, verbose=0):
-        self.test_mode = util.get_from_config('test_mode', config, default=False)
+        self.test_mode = util_mdtf.get_from_config('test_mode', config, default=False)
         self.pods = []
         self.envs = set()
 
@@ -189,13 +190,13 @@ class VirtualenvEnvironmentManager(EnvironmentManager):
         # pylint: disable=maybe-no-member
         super(VirtualenvEnvironmentManager, self).__init__(config, verbose)
 
-        paths = util.PathManager()
-        assert util.is_in_config('venv_root', config)
+        paths = util_mdtf.PathManager()
+        assert util_mdtf.is_in_config('venv_root', config)
         # need to resolve relative path
         self.venv_root = util.resolve_path(
             config['settings']['venv_root'], paths.CODE_ROOT
         )
-        if util.is_in_config('r_lib_root', config):
+        if util_mdtf.is_in_config('r_lib_root', config):
             self.r_lib_root = util.resolve_path(
                 config['settings']['r_lib_root'], paths.CODE_ROOT
             )
@@ -287,7 +288,7 @@ class CondaEnvironmentManager(EnvironmentManager):
         # pylint: disable=maybe-no-member
         super(CondaEnvironmentManager, self).__init__(config, verbose)
 
-        if util.is_in_config('conda_root', config):
+        if util_mdtf.is_in_config('conda_root', config):
             self.conda_root = config['settings']['conda_root']
             self.conda_exe = os.path.join(self.conda_root, 'bin', 'conda')
             assert os.path.exists(self.conda_exe)          
@@ -295,9 +296,9 @@ class CondaEnvironmentManager(EnvironmentManager):
             self.conda_root = ''
             self.conda_exe = 'conda'
 
-        if util.is_in_config('conda_env_root', config):
+        if util_mdtf.is_in_config('conda_env_root', config):
             # need to resolve relative path
-            paths = util.PathManager()
+            paths = util_mdtf.PathManager()
             self.conda_env_root = util.resolve_path(
                 config['settings']['conda_env_root'], 
                 paths.CODE_ROOT
@@ -327,7 +328,7 @@ class CondaEnvironmentManager(EnvironmentManager):
 
     def _call_conda_create(self, env_name):
         # pylint: disable=maybe-no-member
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         prefix = '_MDTF-diagnostics'
         if env_name == prefix:
             short_name = 'base'
@@ -355,7 +356,7 @@ class CondaEnvironmentManager(EnvironmentManager):
 
     def create_all_environments(self):
         # pylint: disable=maybe-no-member
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         command = '{}/src/conda_env_setup.sh'.format(paths.CODE_ROOT)
         try: 
             subprocess.Popen(['bash', '-c', command])
@@ -381,7 +382,7 @@ class CondaEnvironmentManager(EnvironmentManager):
         # pylint: disable=maybe-no-member
         # conda_init for bash defines conda as a shell function; will get error
         # if we try to call the conda executable directly
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         conda_prefix = os.path.join(self.conda_env_root, env_name)
         return [
             'source {}/src/conda_init.sh {}'.format(

@@ -15,6 +15,7 @@ from operator import attrgetter, itemgetter
 from abc import ABCMeta, abstractmethod, abstractproperty
 import datelabel
 import util
+import util_mdtf
 import conflict_resolution as choose
 import cmip6
 from data_manager import DataSet, DataManager, DataAccessError
@@ -48,10 +49,8 @@ class ModuleManager(util.Singleton):
 
     def _module(self, *args):
         # based on $MODULESHOME/init/python.py
-        if type(args[0]) == type([]):
+        if isinstance(args[0], list): # if we're passed explicit list, unpack it
             args = args[0]
-        else:
-            args = list(args)
         cmd = '{}/bin/modulecmd'.format(os.environ['MODULESHOME'])
         proc = subprocess.Popen([cmd, 'python'] + args, stdout=subprocess.PIPE)
         (output, error) = proc.communicate()
@@ -123,8 +122,8 @@ class GfdlDiagnostic(Diagnostic):
             super(GfdlDiagnostic, self).setUp(verbose)
             make_remote_dir(
                 self.POD_OUT_DIR,
-                timeout=util.get_from_config('file_transfer_timeout', self._config),
-                dry_run=util.get_from_config('dry_run', self._config)
+                timeout=util_mdtf.get_from_config('file_transfer_timeout', self._config),
+                dry_run=util_mdtf.get_from_config('dry_run', self._config)
             )
             self._has_placeholder = True
         except PodRequirementFailure:
@@ -269,7 +268,7 @@ class GfdlarchiveDataManager(DataManager):
         return os.listdir(dir_)
 
     def _list_filtered_subdirs(self, dirs_in, subdir_filter=None):
-        subdir_filter = util.coerce_to_iter(subdir_filter, set)
+        subdir_filter = util.coerce_to_iter(subdir_filter)
         found_dirs = []
         for dir_ in dirs_in:
             found_subdirs = {d for d \
@@ -421,7 +420,7 @@ class GfdlarchiveDataManager(DataManager):
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         # GCP can't copy to home dir, so always copy to temp
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         work_dir = paths.make_tempdir(hash_obj = d_key)
         remote_files = sorted( # cast from set to list so we can go in chrono order
             list(self.data_files[d_key]), key=lambda ds: ds.date_range.start
@@ -595,7 +594,7 @@ class GfdlarchiveDataManager(DataManager):
     def _copy_to_output(self):
         # pylint: disable=maybe-no-member
         # use gcp, since OUTPUT_DIR might be mounted read-only
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         if paths.OUTPUT_DIR == paths.WORKING_DIR:
             return # no copying needed
         if self.coop_mode:
@@ -871,7 +870,7 @@ def make_remote_dir(dest_dir, timeout=0, dry_run=False):
         # use GCP for this because output dir might be on a read-only filesystem.
         # apparently trying to test this with os.access is less robust than 
         # just catching the error
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         work_dir = paths.make_tempdir()
         work_dir = os.path.join(work_dir, os.path.basename(dest_dir))
         os.makedirs(work_dir)

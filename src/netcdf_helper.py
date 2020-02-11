@@ -11,6 +11,7 @@ else:
     import subprocess
 import datelabel
 import util
+import util_mdtf
 import StringIO
 import xml.etree.ElementTree as ET
 
@@ -53,7 +54,7 @@ class NetcdfHelper(object):
             """NetcdfHelper is a stub defining method signatures for netcdf 
             manipulation wrapper functions, and shouldn't be called directly."""
             )
-
+            
     @classmethod
     def nc_get_attribute(cls, attr_name, in_file=None, cwd=None, dry_run=False):
         """Return dict of variables and values of a given attribute.
@@ -245,7 +246,7 @@ class CondancoNetcdfHelper(NcoNetcdfHelper):
     @staticmethod
     def run_conda_command(command,
         env=None, cwd=None, timeout=0, dry_run=False):
-        paths = util.PathManager()
+        paths = util_mdtf.PathManager()
         if type(command) != str:
             # quote arguments with spaces
             # need to do more (escaping etc.) for this to be bulletproof
