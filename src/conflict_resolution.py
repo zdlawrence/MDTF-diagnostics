@@ -74,8 +74,8 @@ def minimum_cover(option_dict, option_fn, tiebreaker_fn=None):
         all_idx.add(idx)
         for val in option_dict[key]:
             d[option_fn(val)].add(idx)
-    print("\tDEBUG min_cover indices:", all_idx)
-    print("\tDEBUG min_cover sets:", d)
+    # print("\tDEBUG min_cover indices:", all_idx)
+    # print("\tDEBUG min_cover sets:", d)
     assert set(e for s in d.values() for e in s) == all_idx
 
     covered_idx = set()
