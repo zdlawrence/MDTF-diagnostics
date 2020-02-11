@@ -59,7 +59,6 @@ class MDTFFramework(object):
         self.parse_mdtf_args(cli_obj)
         # use final info to initialize ConfigManager
         print('DEBUG: SETTINGS:\n', util.pretty_print_json(self.config))
-        exit()
 
     def _cli_pre_parse_hook(self, cli_obj):
         # gives subclasses the ability to customize CLI handler before parsing

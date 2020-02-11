@@ -44,6 +44,16 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
             gfdl.GfdlDiagnostic._config = self.config
             self.config['settings']['diagnostic'] = 'Gfdl'
 
+    def parse_paths(self, cli_obj):
+        local_obs_data = util.resolve_path(
+            cli_obj.config.get('OBS_DATA_ROOT', None), self.code_root
+        )
+        util_mdtf.check_required_dirs(
+            already_exist = [cli_obj.config.get('OBS_DATA_REMOTE', None)],
+            create_if_nec = [local_obs_data]
+        )
+        super(GFDLMDTFFramework, self).parse_paths(cli_obj)
+
     # add gfdl to search path for DataMgr, EnvMgr
     _dispatch_search = [
         data_manager, environment_manager, netcdf_helper, shared_diagnostic, gfdl
@@ -85,8 +95,10 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
             print("\tSymlinking obs data dir to {}.".format(source_dir))
             dest_parent = os.path.dirname(dest_dir)
             if os.path.exists(dest_dir):
-                assert os.path.isdir(dest_dir)
-                os.rmdir(dest_dir)
+                try:
+                    os.rmdir(dest_dir)
+                except OSError:
+                    os.remove(dest_dir)
             elif not os.path.exists(dest_parent):
                 os.makedirs(dest_parent)
             util.run_command(
