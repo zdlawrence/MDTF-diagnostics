@@ -15,6 +15,7 @@
 from __future__ import print_function
 import os
 import sys
+import signal
 import cli
 import util
 import util_mdtf
@@ -29,6 +30,10 @@ class MDTFFramework(object):
         framework. 
         """
         self.code_root = code_root
+        # tell PathManager to delete temp files if we're killed
+        signal.signal(signal.SIGTERM, self.cleanup_tempdirs)
+        signal.signal(signal.SIGINT, self.cleanup_tempdirs)
+
         # poor man's subparser: argparse's subparser doesn't handle this
         # use case easily, so just dispatch on first argument
         if len(sys.argv) == 1 or \
@@ -46,6 +51,14 @@ class MDTFFramework(object):
             # above options without having to rewrite below
             self._real_init_hook(code_root, defaults_rel_path)
 
+    def cleanup_tempdirs(self, signum=None, frame=None):
+        # tell PathManager to delete temp files
+        if signum:
+            print("\tDEBUG: {} caught signal {}", self.__class__.__name__, signum)
+        if not self.config['settings']['keep_temp']:
+            paths = util_mdtf.PathManager()
+            paths.cleanup()
+
     def _real_init_hook(self, code_root, defaults_rel_path):
         # set up CLI and parse arguments
         print('\tDEBUG: argv = {}'.format(sys.argv[1:]))
@@ -59,6 +72,8 @@ class MDTFFramework(object):
         self.all_realms = pod_info_tuple.realm_list
         self.pod_realms = pod_info_tuple.realm_data
         # do nontrivial parsing
+        self.dry_run = cli_obj.config.get('dry_run', False)
+        self.timeout = cli_obj.config.get('timeout', False)
         self.parse_mdtf_args(cli_obj)
         # use final info to initialize ConfigManager
         print('DEBUG: SETTINGS:\n', util.pretty_print_json(self.config))
@@ -73,9 +88,9 @@ class MDTFFramework(object):
         most of the functionality is spun out into sub-methods.
         """
         self.postparse_cli(cli_obj)
+        self.parse_env_vars(cli_obj)
         self.parse_pod_list(cli_obj)
         self.parse_case_list(cli_obj)
-        self.parse_env_vars(cli_obj)
         self.parse_paths(cli_obj)
         
         # make config nested dict for backwards compatibility
@@ -97,7 +112,7 @@ class MDTFFramework(object):
 
     def postparse_cli(self, cli_obj):
         # stuff too cumbersome to do within cli.py 
-        if cli_obj.config.get('dry_run', False):
+        if self.dry_run:
             cli_obj.config['test_mode'] = True
         if not cli_obj.config.get('netcdf_helper', None):
             cli_obj.config['netcdf_helper'] = 'Nco'
@@ -165,18 +180,19 @@ class MDTFFramework(object):
         self.envvars = dict()
         self.envvars = cli_obj.config.copy()
 
-    def parse_paths(self, cli_obj):
-        self.paths = dict()
-        # only let this be overridden if we're in a unit test
+    def _mdtf_resolve_path(self, path, cli_obj):
+        # wrapper to resolve relative paths and substitute env vars
+        # only let CODE_ROOT be overridden if we're in a unit test
         rel_paths_root = cli_obj.config.get('CODE_ROOT', None)
         if not rel_paths_root or rel_paths_root == '.':
             rel_paths_root = self.code_root
-        # convert relative to absolute paths
+        return util.resolve_path(util.coerce_from_iter(path), rel_paths_root)
+
+    def parse_paths(self, cli_obj):
+        self.paths = dict()
         for key, val in cli_obj.iteritems_cli('PATHS'):
-            val2 = util.resolve_path(
-                util.coerce_from_iter(val), rel_paths_root
-            )
-            print('\tDEBUG: {},{},{}'.format(key, val, val2))
+            val2 = self._mdtf_resolve_path(val, cli_obj)
+            # print('\tDEBUG: {},{},{}'.format(key, val, val2))
             self.paths[key] = val2
         util_mdtf.check_required_dirs(
             already_exist = [
@@ -252,6 +268,7 @@ class MDTFFramework(object):
 
         for case in caselist:
             case.tearDown(self.config)
+        self.cleanup_tempdirs()
 
 def version_check():
     v = sys.version_info

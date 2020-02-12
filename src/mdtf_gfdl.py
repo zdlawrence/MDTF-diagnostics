@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import os
+import shutil
 import tempfile
 import data_manager
 import environment_manager
@@ -13,54 +14,65 @@ import netcdf_helper
 import mdtf
 
 class GFDLMDTFFramework(mdtf.MDTFFramework):
-    def __init__(self, code_root, defaults_rel_path):
-        self.set_tempdir()
-        super(GFDLMDTFFramework, self).__init__(code_root, defaults_rel_path)
-
-    @staticmethod
-    def set_tempdir():
-        """Setting tempfile.tempdir causes all temp directories returned by 
-        util_mdtf.PathManager to be in that location.
-        If we're running on PPAN, recommended practice is to use $TMPDIR
-        for scratch work. 
-        If we're not, assume we're on a workstation. gcp won't copy to the 
-        usual /tmp, so put temp files in a directory on /net2.
-        """
-        if 'TMPDIR' in os.environ:
-            tempfile.tempdir = os.environ['TMPDIR']
-        elif os.path.isdir('/net2'):
-            tempfile.tempdir = os.path.join('/net2', os.environ['USER'], 'tmp')
-            if not os.path.isdir(tempfile.tempdir):
-                gfdl.make_remote_dir(tempfile.tempdir)
-        else:
-            print("Using default tempdir on this system")
-        os.environ['MDTF_GFDL_TMPDIR'] = tempfile.gettempdir()
-
-    def parse_mdtf_args(self, cli_obj):
-        super(GFDLMDTFFramework, self).parse_mdtf_args(cli_obj)
-        self.fetch_obs_data()
-        if self.config['settings'].get('frepp', False):
-            # set up cooperative mode -- hack to pass config settings
-            gfdl.GfdlDiagnostic._config = self.config
-            self.config['settings']['diagnostic'] = 'Gfdl'
-
-    def parse_paths(self, cli_obj):
-        local_obs_data = util.resolve_path(
-            cli_obj.config.get('OBS_DATA_ROOT', None), self.code_root
-        )
-        util_mdtf.check_required_dirs(
-            already_exist = [cli_obj.config.get('OBS_DATA_REMOTE', None)],
-            create_if_nec = [local_obs_data]
-        )
-        super(GFDLMDTFFramework, self).parse_paths(cli_obj)
-
     # add gfdl to search path for DataMgr, EnvMgr
     _dispatch_search = [
         data_manager, environment_manager, netcdf_helper, shared_diagnostic, gfdl
     ]
 
+    def parse_mdtf_args(self, cli_obj):
+        ### call parent class method
+        super(GFDLMDTFFramework, self).parse_mdtf_args(cli_obj)
+
+        # copy obs data from site install
+        self.fetch_obs_data()
+        # set up cooperative mode -- hack to pass config settings
+        if self.config['settings'].get('frepp', False):
+            gfdl.GfdlDiagnostic._config = self.config
+            self.config['settings']['diagnostic'] = 'Gfdl'
+
+    def parse_env_vars(self, cli_obj):
+        # set temp directory according to where we're running
+        if gfdl.running_on_PPAN():
+            gfdl_tmp_dir = cli_obj.config.get('GFDL_PPAN_TEMP', '$TMPDIR')
+        else:
+            gfdl_tmp_dir = cli_obj.config.get('GFDL_WS_TEMP', '$TMPDIR')
+        gfdl_tmp_dir = self._mdtf_resolve_path(gfdl_tmp_dir, cli_obj)
+        if not os.path.isdir(gfdl_tmp_dir):
+            gfdl.make_remote_dir(gfdl_tmp_dir)
+        tempfile.tempdir = gfdl_tmp_dir
+        os.environ['MDTF_GFDL_TMPDIR'] = gfdl_tmp_dir
+
+        ### call parent class method
+        super(GFDLMDTFFramework, self).parse_env_vars(cli_obj)
+
+    def parse_paths(self, cli_obj):
+        self.paths = dict()
+        for key, val in cli_obj.iteritems_cli('PATHS'):
+            val2 = self._mdtf_resolve_path(val, cli_obj)
+            # print('\tDEBUG: {},{},{}'.format(key, val, val2))
+            self.paths[key] = val2
+
+        # clean out WORKING_DIR if we're not keeping temp files
+        if not cli_obj.config.get('keep_temp', False):
+            shutil.rmtree(self.paths['WORKING_DIR'])
+        util_mdtf.check_required_dirs(
+            already_exist = [
+                self.paths['CODE_ROOT'], self.paths['OBS_DATA_REMOTE']
+            ], 
+            create_if_nec = [
+                self.paths['MODEL_DATA_ROOT'], self.paths['WORKING_DIR'],
+                self.paths['OBS_DATA_ROOT']
+        ])
+        # Use GCP to create OUTPUT_DIR on a volume that may be read-only
+        if not os.path.exists(self.paths['OUTPUT_DIR']):
+            gfdl.make_remote_dir(
+                self.paths['OUTPUT_DIR'], self.timeout, self.dry_run
+            )
+
     def set_case_pod_list(self, case_dict):
+        ### call parent class method
         requested_pods = super(GFDLMDTFFramework, self).set_case_pod_list(case_dict)
+
         if not self.config['settings'].get('frepp', False):
             # try to run everything if not in frepp cooperative mode
             return requested_pods
@@ -77,10 +89,8 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
             ]
 
     def fetch_obs_data(self):
-        dry_run = self.config['settings'].get('dry_run', False)
-        timeout = self.config['settings'].get('file_transfer_timeout', 0)
-        dest_dir = self.config['paths']['OBS_DATA_ROOT']
-        source_dir = self.config['paths'].get('OBS_DATA_REMOTE', dest_dir)
+        dest_dir = self.paths['OBS_DATA_ROOT']
+        source_dir = self.paths['OBS_DATA_REMOTE']
         if source_dir == dest_dir:
             return
         if not os.path.exists(source_dir) or not os.listdir(source_dir):
@@ -90,7 +100,9 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
         if gfdl.running_on_PPAN():
             print("\tGCPing data from {}.".format(source_dir))
             # giving -cd to GCP, so will create dirs
-            gfdl.gcp_wrapper(source_dir, dest_dir, timeout=timeout, dry_run=dry_run)
+            gfdl.gcp_wrapper(
+                source_dir, dest_dir, timeout=self.timeout, dry_run=self.dry_run
+            )
         else:
             print("\tSymlinking obs data dir to {}.".format(source_dir))
             dest_parent = os.path.dirname(dest_dir)
@@ -103,7 +115,7 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
                 os.makedirs(dest_parent)
             util.run_command(
                 ['ln', '-fs', source_dir, dest_dir], 
-                dry_run=dry_run
+                dry_run=self.dry_run
             )
 
 

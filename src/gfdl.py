@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 import re
+import shutil
 if os.name == 'posix' and sys.version_info[0] < 3:
     try:
         import subprocess32 as subprocess
@@ -240,13 +241,23 @@ class GfdlarchiveDataManager(DataManager):
         modMgr = ModuleManager()
         modMgr.load('gcp', 'nco') # should refactor
         config['settings']['netcdf_helper'] = 'NcoNetcdfHelper'
-        self.coop_mode = config['settings']['frepp']
-
         super(GfdlarchiveDataManager, self).__init__(case_dict, config, DateFreqMixin)
+
         assert ('root_dir' in case_dict)
         assert os.path.isdir(case_dict['root_dir'])
         self.root_dir = case_dict['root_dir']
         self.tape_filesystem = is_on_tape_filesystem(self.root_dir)
+
+        self.frepp_mode = config['settings']['frepp']
+        if self.frepp_mode:
+            self.no_overwrite = False
+            # flag to not overwrite config and .tar: want overwrite for frepp
+            self.no_file_overwrite = False
+            # if we had no_overwrite, MODEL_OUT_DIR will have been set to a 
+            # unique name in parent's init. Set it back so it will be overwritten.
+            paths = util_mdtf.PathManager()
+            d = paths.modelPaths(self)
+            self.MODEL_OUT_DIR = d['MODEL_OUT_DIR']
 
     DataKey = namedtuple('DataKey', ['name_in_model', 'date_freq'])  
     def dataset_key(self, dataset):
@@ -572,9 +583,11 @@ class GfdlarchiveDataManager(DataManager):
         pass
 
     def _make_html(self, cleanup=False):
-        # pylint: disable=maybe-no-member
+        # never cleanup html if we're in frepp_mode, since framework may run 
+        # later when another component finishes. Instead just append current
+        # progress to TEMP_HTML.
         prev_html = os.path.join(self.MODEL_OUT_DIR, 'index.html')
-        if self.coop_mode and os.path.exists(prev_html):
+        if self.frepp_mode and os.path.exists(prev_html):
             print("\tDEBUG: Appending previous index.html at {}".format(prev_html))
             with open(prev_html, 'r') as f1:
                 contents = f1.read()
@@ -589,15 +602,26 @@ class GfdlarchiveDataManager(DataManager):
                 mode = 'w'
             with open(self.TEMP_HTML, mode) as f2:
                 f2.write(contents)
-        super(GfdlarchiveDataManager, self)._make_html(cleanup=False)
+        super(GfdlarchiveDataManager, self)._make_html(cleanup=(not self.frepp_mode))
+
+    def _make_tar_file(self, tar_dest_dir):
+        # pylint: disable=maybe-no-member
+        # make locally in WORKING_DIR and gcp to destination,
+        # since OUTPUT_DIR might be mounted read-only
+        paths = util_mdtf.PathManager()
+        out_file = super(GfdlarchiveDataManager, self)._make_tar_file(paths.WORKING_DIR)
+        gcp_wrapper(
+            out_file, tar_dest_dir,
+            timeout=self.file_transfer_timeout, dry_run=self.dry_run
+        )
+        _, file_ = os.path.split(out_file)
+        return os.path.join(tar_dest_dir, file_)
 
     def _copy_to_output(self):
-        # pylint: disable=maybe-no-member
         # use gcp, since OUTPUT_DIR might be mounted read-only
-        paths = util_mdtf.PathManager()
-        if paths.OUTPUT_DIR == paths.WORKING_DIR:
+        if self.MODEL_WK_DIR == self.MODEL_OUT_DIR:
             return # no copying needed
-        if self.coop_mode:
+        if self.frepp_mode:
             # only copy PODs that ran, whether they succeeded or not
             for pod in self.pods:
                 if pod._has_placeholder:
@@ -611,6 +635,7 @@ class GfdlarchiveDataManager(DataManager):
             for f in os.listdir(self.MODEL_WK_DIR):
                 print("\t\tDEBUG: found {}".format(f))
                 if os.path.isfile(os.path.join(self.MODEL_WK_DIR, f)):
+                    print("\t\tDEBUG: found {}".format(f))
                     gcp_wrapper(
                         os.path.join(self.MODEL_WK_DIR, f), 
                         self.MODEL_OUT_DIR,
@@ -618,11 +643,18 @@ class GfdlarchiveDataManager(DataManager):
                     )
         else:
             # copy everything at once
-            gcp_wrapper(
-                self.MODEL_WK_DIR, self.MODEL_OUT_DIR, 
-                timeout=self.file_transfer_timeout,
-                dry_run=self.dry_run
-            )
+            if os.path.exists(self.MODEL_OUT_DIR) and self.no_overwrite:
+                print('Error: {} exists, overwriting anyway.'.format(
+                    self.MODEL_OUT_DIR))
+            try:
+                gcp_wrapper(
+                    self.MODEL_WK_DIR, self.MODEL_OUT_DIR, 
+                    timeout=self.file_transfer_timeout,
+                    dry_run=self.dry_run
+                )
+            except Exception:
+                raise # only delete MODEL_WK_DIR if copied successfully
+            shutil.rmtree(self.MODEL_WK_DIR)
 
 
 class GfdlppDataManager(GfdlarchiveDataManager):
