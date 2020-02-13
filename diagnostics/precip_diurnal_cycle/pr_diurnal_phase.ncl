@@ -522,6 +522,7 @@ ps_name = ps_name0+"_pr."+region_plot+".dc."
             ; CESM native date index
             tstart = toint(run_years(iyear))*1000000+toint(months(imonth))*10000+(1*100) 
           end if
+          end if
           print(tstart)
           
 ; Adjust for cd_calendar problems in cam/climo runs as the first year is usually 0000 and

@@ -55,6 +55,9 @@ olrvar = getenv("rlut_var")
 u250var = getenv("u250_var")
 u850var = getenv("u850_var")
 
+lev_fac = getenv("pressure_to_Pa_factor")
+lev_factor = stringtointeger(lev_fac)
+
 print("Input data path(Model) :" + diri)
 print("Input data path(obs) :" + diri1)
 print("Output data path :" + diro)
@@ -115,7 +118,7 @@ print("-------------------------------------------------------------------------
     ; HACK for merging in SPEAR code before we have general level extraction working
     if (getenv("MDTF_3D_UV").eq."0") then
       ; extract level from 4D data
-      u250t = a->$u250var$(iStrt:iLast,{25000},lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
+      u250t = a->$u250var$(iStrt:iLast,{25000/lev_factor},lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
     else
       ; 3D data
       u250t = a->$u250var$(iStrt:iLast,lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
@@ -214,7 +217,7 @@ print("Reading data for 850mb wind")
   ; HACK for merging in SPEAR code before we have general level extraction working
   if (getenv("MDTF_3D_UV").eq."0") then
     ; extract level from 4D data    
-    u850 = b->$u850var$(iStrt:iLast,{85000},lat_ind,:)     ;time,lat,lon , 15N - 15S
+    u850 = b->$u850var$(iStrt:iLast,{85000/lev_factor},lat_ind,:)     ;time,lat,lon , 15N - 15S
     poisson_grid_fill(u850,True,1,1000,1e-2,0.6,0)
   else
     ; 3D data

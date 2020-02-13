@@ -10,10 +10,12 @@ casename = getenv("CASENAME")
 yr1 = getenv("FIRSTYR")
 yr2 = getenv("LASTYR")
 date_off = getenv("date_int_offset")
+lev_fac = getenv("pressure_to_Pa_factor")
 
 firstyr = stringtointeger(yr1)
 lastyr = stringtointeger(yr2)
 date_offset = stringtointeger(date_off) ; 1 for native CESM, 0 for GFDL & CMIP
+lev_factor = stringtointeger(lev_fac)
 nyrs = lastyr-firstyr+1
 nmons = nyrs*12
 
@@ -70,6 +72,7 @@ else if (date_offset.eq.1) then
    start_date = firstyr*10000+201
    end_date = (lastyr+1)*10000+101
 end if
+end if
 ; in either case, above only used to set following indices
 do i=0,dimsizes(date_all)-1
    if( date_all(i).eq.start_date ) then
@@ -91,7 +94,7 @@ win_anom@long_name = "Winter (DJFM) 500mb height anomaly"
 win_anom@units = "meters"
 
 ; attempt to find pressure level
-iLev = ind(lev.eq.50000)
+iLev = ind(lev.eq.(50000/lev_factor))
 if (ismissing(iLev)) then
   print(" FATAL ERROR: No value equal to 50000 found in "+lev_coord+" in "+file_path+"/mon/"+casename+"."+zg_var+".mon.nc")
 end if
