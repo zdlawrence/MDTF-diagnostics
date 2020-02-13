@@ -70,8 +70,15 @@ print("data table for t stat is read in ")
     iStrt   = ind(ymd.eq.ymdStrt)              ; index start
     iLast   = ind(ymd.eq.ymdLast)              ; index last 
    
-
-    zgt = a->$z250var$(iStrt:iLast,{25000},:,:)     ;time,lat,lon
+    ; HACK for merging in SPEAR code before we have general level extraction working
+    if (getenv("MDTF_3D_Z").eq."0") then
+      ; extract level from 4D data
+      zgt = a->$z250var$(iStrt:iLast,{25000},:,:)     ;time,lat,lon
+    else
+      ; 3D data
+      zgt = a->$z250var$(iStrt:iLast,:,:)     ;time,lat,lon
+    end if
+    ; end HACK
     zgt@_FillValue = -999
 
     lon = tofloat(a->lon)
