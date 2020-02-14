@@ -10,38 +10,49 @@
 # versions had things in different places.
 
 # Try to determine where conda is
-if [[ $# -eq 1 ]]; then
-    _MDTF_CONDA_ROOT="$1"
-else
-    if [[ -z "$_CONDA_ROOT" ]]; then
-        _MDTF_CONDA_ROOT="$_CONDA_ROOT"
-    else
-        if [[ -z "$CONDA_EXE" ]]; then
+function find_conda {
+    _MDTF_CONDA_ROOT="$( conda info --root 2> /dev/null )"
+    if [[ $? -ne 0 || -z "$_MDTF_CONDA_ROOT" ]]; then
+        # see if env vars tell us anything
+        if [[ -n "$CONDA_EXE" ]]; then
             _MDTF_CONDA_ROOT="$( cd "$(dirname "$CONDA_EXE")/.."; pwd -P )"
+        elif [[ -n "$_CONDA_ROOT" ]]; then
+            _MDTF_CONDA_ROOT="$_CONDA_ROOT"
         else
-            if [[ -n "$( command -v conda)" ]]; then
-                _MDTF_CONDA_ROOT="$(conda info --root)"
-            else
-                echo "Conda not found on \$PATH, sourcing .bashrc"
-                if [[ -f $HOME/.bashrc ]]; then
-                    source $HOME/.bashrc
-                fi
-                if [[ -n "$( command -v conda)" ]]; then
-                    _MDTF_CONDA_ROOT="$(conda info --root)"
-                else
-                    echo "Conda still not found; aborting"
-                    exit 1
-                fi
-            fi
+            _MDTF_CONDA_ROOT="" # failure
         fi
     fi
+}
+
+_MDTF_CONDA_ROOT=""
+if [[ $# -eq 1 ]]; then
+    _MDTF_CONDA_ROOT="$1"  # passed the path to use on command line
+fi
+if [[ -z "$_MDTF_CONDA_ROOT" ]]; then
+    find_conda
+fi
+if [[ -z "$_MDTF_CONDA_ROOT" ]]; then
+    echo "conda not found, sourcing ~/.bashrc"
+    if [[ -f "$HOME/.bashrc" ]]; then
+        source "$HOME/.bashrc"
+    fi
+    find_conda
+fi
+if [[ -z "$_MDTF_CONDA_ROOT" ]]; then
+    echo "ERROR: still can't find conda"
 fi
 export _CONDA_ROOT="$_MDTF_CONDA_ROOT"
 export CONDA_EXE="${_CONDA_ROOT}/bin/conda"
 export _CONDA_EXE="$CONDA_EXE"
-echo "Found conda at $CONDA_EXE"
+if [[ -x "$CONDA_EXE" ]]; then
+    echo "Found conda at $CONDA_EXE"
+else
+    echo "ERROR: no conda executable at $CONDA_EXE"
+    exit 1
+fi
 
-__conda_setup="$($CONDA_EXE 'shell.bash' 'hook' 2> /dev/null)"
+# assume we've found conda, now run Anaconda's init script
+__conda_setup="$( $CONDA_EXE 'shell.bash' 'hook' 2> /dev/null )"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
