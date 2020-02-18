@@ -157,10 +157,6 @@ class DataManager(object):
         self.MODEL_OUT_DIR = d.MODEL_OUT_DIR
         self.TEMP_HTML = os.path.join(self.MODEL_WK_DIR, 'pod_output_temp.html')
 
-        self.dry_run = util_mdtf.get_from_config('dry_run', config, default=False)
-        self.file_transfer_timeout = util_mdtf.get_from_config(
-            'file_transfer_timeout', config, default=0) # 0 = syntax for no timeout
-
         # dynamic inheritance to add netcdf manipulation functions
         # source: https://stackoverflow.com/a/8545134
         mixin = config.config.get(netcdf_helper, 'NcoNetcdfHelper')
