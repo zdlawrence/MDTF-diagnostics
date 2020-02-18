@@ -52,19 +52,26 @@ class Diagnostic(object):
             pod_name (:obj:`str`): Name of the POD to initialize.
             verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
         """
-        # pylint: disable=maybe-no-member
-        paths = util_mdtf.PathManager()
+        config = util_mdtf.ConfigManager()
+        assert pod_name in config.pods
+        # define attributes manually so linter doesn't complain
+        # others are set in _parse_pod_settings
+        self.driver = ""
+        self.program = ""
+        self.pod_env_vars = dict()
+        self.skipped = None
+        self.POD_CODE_DIR = ""
+        self.POD_OBS_DATA = ""
+        self.POD_WK_DIR = ""
+        self.POD_OUT_DIR = ""
+        self.TEMP_HTML = ""
 
         self.name = pod_name
-        self.__dict__.update(paths.podPaths(self))
-        file_contents = util.read_json(
-            os.path.join(self.POD_CODE_DIR, 'settings.json'))
-        self.dry_run = False
-
-        config = self._parse_pod_settings(file_contents['settings'], verbose)
-        self.__dict__.update(config)
-        config = self._parse_pod_varlist(file_contents['varlist'], verbose)
-        self.varlist = config
+        self.code_root = config.paths.CODE_ROOT
+        self.dry_run = config.config.get('dry_run', False)
+        d = config.pods[pod_name]
+        self.__dict__.update(self._parse_pod_settings(d['settings']))
+        self.varlist = self._parse_pod_varlist(d['varlist'])
 
     def iter_vars_and_alts(self):
         """Generator iterating over all variables and alternates in POD's varlist.
@@ -88,16 +95,13 @@ class Diagnostic(object):
         d = {}
         d['pod_name'] = self.name # redundant
         # define empty defaults to avoid having to test existence of attrs
-        for str_attr in ['program', 'driver', 'long_name', 'description', 
-            'env', 'convention']:
+        for str_attr in ['long_name', 'description', 'env', 'convention']:
             d[str_attr] = ''
         for list_attr in ['varlist',
             'required_programs', 'required_python_modules', 
             'required_ncl_scripts', 'required_r_packages']:
             d[list_attr] = []
-        for dict_attr in ['pod_env_vars']:
-            d[dict_attr] = {}
-        for obj_attr in ['process_obj', 'logfile_obj', 'skipped']:
+        for obj_attr in ['process_obj', 'logfile_obj']:
             d[obj_attr] = None
 
         # overwrite with contents of settings.json file
@@ -127,7 +131,6 @@ class Diagnostic(object):
         Returns:
             varlist
         """
-        # pylint: disable=maybe-no-member
         default_file_required = True 
         for i, var in enumerate(varlist):
             assert var['freq'] in ['1hr', '3hr', '6hr', 'day', 'mon'], \
@@ -170,7 +173,6 @@ class Diagnostic(object):
             :meth:`~shared_diagnostic.Diagnostic._check_for_varlist_files` 
             subroutines.
         """
-        # pylint: disable=maybe-no-member
         self._set_pod_env_vars(verbose)
         self._setup_pod_directories()
         if isinstance(self.skipped, Exception):
@@ -205,7 +207,6 @@ class Diagnostic(object):
         Args:
             verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
         """
-        # pylint: disable=maybe-no-member
         self.pod_env_vars.update({
             "POD_HOME": self.POD_CODE_DIR, # location of POD's code
             "OBS_DATA": self.POD_OBS_DATA, # POD's observational data
@@ -257,7 +258,6 @@ class Diagnostic(object):
         Args:
             verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
         """
-        # pylint: disable=maybe-no-member
         util_mdtf.check_required_dirs(
             already_exist =[self.POD_CODE_DIR, self.POD_OBS_DATA], 
             create_if_nec = [self.POD_WK_DIR], 
@@ -277,7 +277,6 @@ class Diagnostic(object):
         Raises: :exc:`~shared_diagnostic.PodRequirementFailure` if driver script
             can't be found.
         """
-        # pylint: disable=maybe-no-member
         func_name = "check_pod_driver "
         if (verbose > 1): 
             print(func_name," received POD settings: ", self.__dict__)
@@ -413,8 +412,7 @@ class Diagnostic(object):
                 the POD's runtime environment.
         """
         # pylint: disable=maybe-no-member
-        paths = util_mdtf.PathManager()
-        command_path = os.path.join(paths.CODE_ROOT, 'src', 'validate_environment.sh')
+        command_path = os.path.join(self.code_root, 'src', 'validate_environment.sh')
         command = [
             command_path,
             ' -v',
@@ -444,58 +442,45 @@ class Diagnostic(object):
         if isinstance(self.skipped, Exception):
             self.append_result_link(self.skipped)
         else:
-            # shouldn't need to re-set env vars, but used by 
-            # convective_transition_diag to set filename info 
-            self._set_pod_env_vars(verbose=verbose)
-            self._make_pod_html()
-            self._convert_pod_figures()
-            self._cleanup_pod_files()
+            config = util_mdtf.ConfigManager()
+            self._make_pod_html(config)
+            self._convert_pod_figures(config)
+            self._cleanup_pod_files(config)
 
         if verbose > 0: 
             print("---  MDTF.py Finished POD "+self.name+"\n")
             # elapsed = timeit.default_timer() - start_time
             # print(pod+" Elapsed time ",elapsed)
 
-    def _make_pod_html(self):
+    def _make_pod_html(self, config):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.tearDown`.  
         """
-        # pylint: disable=maybe-no-member
-        html_file = os.path.join(self.POD_WK_DIR, self.name+'.html')
-        temp_file = os.path.join(self.POD_WK_DIR, 'tmp.html')
+        source = os.path.join(self.POD_CODE_DIR, self.name+'.html')
+        dest = os.path.join(self.POD_WK_DIR, self.name+'.html')
 
-        if os.path.exists(html_file):
-            os.remove(html_file)
-        shutil.copy2(
-            os.path.join(self.POD_CODE_DIR, self.name+'.html'), 
-            self.POD_WK_DIR
-        )
-        os.system("cat "+ html_file \
-            + r" | sed -e s/casename/" + os.environ["CASENAME"] + r"/g > " \
-            + temp_file)
-        # following two substitutions are specific to convective_transition_diag
-        # need to find a more elegant way to handle this
+        template = config.global_envvars.copy()
+        template.update(self.pod_env_vars)
         if self.name == 'convective_transition_diag':
-            temp_file2 = os.path.join(self.POD_WK_DIR, 'tmp2.html')
-            if ("BULK_TROPOSPHERIC_TEMPERATURE_MEASURE" in os.environ) \
-                and os.environ["BULK_TROPOSPHERIC_TEMPERATURE_MEASURE"] == "2":
-                os.system("cat " + temp_file \
-                    + r" | sed -e s/_tave\./_qsat_int\./g > " + temp_file2)
-                shutil.move(temp_file2, temp_file)
-            if ("RES" in os.environ) and os.environ["RES"] != "1.00":
-                os.system("cat " + temp_file \
-                    + r" | sed -e s/_res\=1\.00_/_res\=" + os.environ["RES"] + r"_/g > " \
-                    + temp_file2)
-                shutil.move(temp_file2, temp_file)
-        shutil.copy2(temp_file, html_file) 
-        os.remove(temp_file)
+            # change filenames of model and obs figures that get linked
+            # need a more elegant way to handle this
+            tropo_meas = template.get('BULK_TROPOSPHERIC_TEMPERATURE_MEASURE', None)
+            if tropo_meas == '1':
+                template['TROPO_VAR'] = 'tave'
+            elif tropo_meas == '2':
+                template['TROPO_VAR'] = 'qsat_int'
+            else:
+                print(("ERROR in convective_transition_diag's settings.json: "
+                    "BULK_TROPOSPHERIC_TEMPERATURE_MEASURE = {}, expected '1' "
+                    "or '2'").format(tropo_meas))
 
+        if os.path.exists(dest):
+            os.remove(dest)
+        util_mdtf.append_html_template(source, dest, template_dict=template)
         # add link and description to main html page
         self.append_result_link()
 
     def append_result_link(self, error=None):
-        # pylint: disable=maybe-no-member
-        paths = util_mdtf.PathManager()
-        src_dir = os.path.join(paths.CODE_ROOT, 'src', 'html')
+        src_dir = os.path.join(self.code_root, 'src', 'html')
         template_dict = self.__dict__.copy()
         if error is None:
             # normal exit
@@ -506,10 +491,9 @@ class Diagnostic(object):
             template_dict['error_text'] = str(error)
         util_mdtf.append_html_template(src, self.TEMP_HTML, template_dict)
 
-    def _convert_pod_figures(self):
+    def _convert_pod_figures(self, config):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.tearDown`.
         """
-        # pylint: disable=maybe-no-member
         dirs = ['model/PS', 'obs/PS']
         exts = ['ps', 'eps']
         files = []
@@ -520,14 +504,13 @@ class Diagnostic(object):
         for f in files:
             (dd, ff) = os.path.split(os.path.splitext(f)[0])
             ff = os.path.join(os.path.dirname(dd), ff) # parent directory/filename
-            command_str = 'convert '+ os.environ['convert_flags'] + ' ' \
-                + f + ' ' + ff + '.' + os.environ['convert_output_fmt']
-            os.system(command_str)
+            os.system('convert {0} {1} {2}.{3}'.format(
+                config.config.convert_flags, f, ff, config.config.convert_output_fmt
+            ))
 
-    def _cleanup_pod_files(self):
+    def _cleanup_pod_files(self, config):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.tearDown`.
         """
-        # pylint: disable=maybe-no-member
         # copy PDF documentation (if any) to output
         files = glob.glob(os.path.join(self.POD_CODE_DIR, '*.pdf'))
         for file in files:
@@ -543,16 +526,15 @@ class Diagnostic(object):
             shutil.copy2(file, os.path.join(self.POD_WK_DIR, 'obs'))
 
         # remove .eps files if requested
-        if os.environ["save_ps"] == "0":
+        if not config.config.save_ps:
             for d in ['model/PS', 'obs/PS']:
                 if os.path.exists(os.path.join(self.POD_WK_DIR, d)):
                     shutil.rmtree(os.path.join(self.POD_WK_DIR, d))
-
-        if os.environ["save_non_nc"] != "0":
-            # delete netCDF files, keep everything else
+        # delete netCDF files, keep everything else
+        if config.config.save_non_nc:
             os.system('find {} -iname "*.nc" -delete'.format(self.POD_WK_DIR))
-        elif os.environ["save_nc"] == "0":
-            # delete all generated data (flag is a misnomer)
+        # delete all generated data (flag is a misnomer)
+        elif not config.config.save_nc:
             for d in ['model/netCDF', 'obs/netCDF']:
                 if os.path.exists(os.path.join(self.POD_WK_DIR, d)):
                     shutil.rmtree(os.path.join(self.POD_WK_DIR, d))

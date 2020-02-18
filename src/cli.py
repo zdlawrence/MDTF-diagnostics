@@ -51,6 +51,9 @@ class CLIHandler(object):
         # no way to get this from public interface? _actions of group
         # contains all actions for entire parser
         self.parser_args_from_group = collections.defaultdict(list)
+        # manually track args requiring custom postprocessing (even if default
+        # is used, so can't do with action=.. in argument)
+        self.custom_types = collections.defaultdict(list)
         self.parser = self.make_parser(defaults)
 
     def iter_cli_actions(self):
@@ -133,9 +136,12 @@ class CLIHandler(object):
                 d['default'] = d['type'](d['default'])
         if d.get('action', '') == 'count' and 'default' in d:
             d['default'] = int(d['default'])
+        if d.get('parse_type', None):
+            # make list of args requiring custom post-parsing later
+            self.custom_types[d.pop('parse_type')].append(d['dest'])
         # TODO: what if following require env vars, etc??
-        if d.pop('eval', None):
-            for attr in util.coerce_to_iter(d['eval']):
+        if d.get('eval', None):
+            for attr in util.coerce_to_iter(d.pop('eval')):
                 if attr in d:
                     d[attr] = eval(d[attr])
 
@@ -189,6 +195,7 @@ class FrameworkCLIHandler(CLIHandler):
         self.config = dict()
         self.parser_groups = dict()
         self.parser_args_from_group = collections.defaultdict(list)
+        self.custom_types = collections.defaultdict(list)
         self.parser = self.make_default_parser(defaults, defaults_path)
 
     def make_default_parser(self, d, config_path):
@@ -291,8 +298,9 @@ class FrameworkCLIHandler(CLIHandler):
         # CLI opts override options set from file, which override defaults
         self.config = dict(ChainMap(*chained_dict_list))
 
-PodDataTuple = collections.namedtuple('PodDataTuple', 
-    'pod_list pod_data realm_list realm_data')
+PodDataTuple = collections.namedtuple(
+    'PodDataTuple', 'sorted_lists pod_data realm_data'
+)
 def load_pod_settings(code_root, pod=None, pod_list=None):
     """Wrapper to load POD settings files, used by ConfigManager and CLIInfoHandler.
     """
@@ -331,6 +339,8 @@ def load_pod_settings(code_root, pod=None, pod_list=None):
                 bad_pods.append(p)
                 continue
             pods[p] = d
+            # PODs requiring data from multiple realms get stored in the dict
+            # under a tuple of those realms; realms stored indivudally in realm_list
             _realm = util.coerce_to_iter(d['settings'].get('realm', None), tuple)
             if len(_realm) == 0:
                 continue
@@ -343,8 +353,11 @@ def load_pod_settings(code_root, pod=None, pod_list=None):
         for p in bad_pods:
             pod_list.remove(p)
         return PodDataTuple(
-            pod_list=pod_list, pod_data=pods, 
-            realm_list = sorted(list(realm_list), key=str.lower), realm_data=realms
+            pod_data=pods, realm_data=realms,
+            sorted_lists={
+                "pods": pod_list,
+                "realms": sorted(list(realm_list), key=str.lower)
+            }
         )
     else:
         if pod not in pod_list:
@@ -365,9 +378,9 @@ class InfoCLIHandler(object):
 
         self.code_root = code_root
         pod_info_tuple = load_pod_settings(self.code_root)
-        self.pod_list = pod_info_tuple.pod_list
+        self.pod_list = pod_info_tuple.sorted_lists.get('pods', [])
         self.pods = pod_info_tuple.pod_data
-        self.realm_list = pod_info_tuple.realm_list
+        self.realm_list = pod_info_tuple.sorted_lists.get('realms', [])
         self.realms = pod_info_tuple.realm_data
 
         # build list of recognized topics, in order
