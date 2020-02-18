@@ -11,7 +11,7 @@
 
 # Try to determine where conda is
 function find_conda {
-    _MDTF_CONDA_ROOT="$( conda info --root 2> /dev/null )"
+    _MDTF_CONDA_ROOT="$( conda info --base 2> /dev/null )"
     if [[ $? -ne 0 || -z "$_MDTF_CONDA_ROOT" ]]; then
         # see if env vars tell us anything
         if [[ -n "$CONDA_EXE" ]]; then
@@ -45,7 +45,8 @@ export _CONDA_ROOT="$_MDTF_CONDA_ROOT"
 export CONDA_EXE="${_CONDA_ROOT}/bin/conda"
 export _CONDA_EXE="$CONDA_EXE"
 if [[ -x "$CONDA_EXE" ]]; then
-    echo "Found conda at $CONDA_EXE"
+    echo "_CONDA_EXE=${CONDA_EXE}"
+    echo "_CONDA_ROOT=${_CONDA_ROOT}"
 else
     echo "ERROR: no conda executable at $CONDA_EXE"
     exit 1
