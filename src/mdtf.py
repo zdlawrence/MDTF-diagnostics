@@ -31,6 +31,7 @@ import data_manager
 import environment_manager
 import netcdf_helper
 import shared_diagnostic
+import netcdf_helper
 
 class MDTFFramework(object):
     def __init__(self, code_root, defaults_rel_path):
@@ -253,11 +254,16 @@ class MDTFFramework(object):
             caselist.append(case)
 
         for case in caselist:
-            env = self.EnvironmentManager()
-            env.pods = case.pods # best way to do this?
-            env.setUp()
-            env.run()
-            env.tearDown()
+            env_mgr = self.EnvironmentManager(self.config)
+            env_mgr.pods = case.pods # best way to do this?
+            # nc_helper = self.NetCDFHelper()
+
+            # case.preprocess_local_data(
+            #     netcdf_mixin=nc_helper, environment_manager=env_mgr
+            # )
+            env_mgr.setUp()
+            env_mgr.run()
+            env_mgr.tearDown()
 
         for case in caselist:
             case.tearDown()

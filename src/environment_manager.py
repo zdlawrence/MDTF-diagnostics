@@ -364,7 +364,7 @@ class CondaEnvironmentManager(EnvironmentManager):
         """
         # conda_init for bash defines conda as a shell function; will get error
         # if we try to call the conda executable directly
-        conda_prefix = os.path.join(self.conda_env_root, pod.env)
+        conda_prefix = os.path.join(self.conda_env_root, env_name)
         return [
             'source {}/src/conda_init.sh {}'.format(
                 self.code_root, self.conda_root
