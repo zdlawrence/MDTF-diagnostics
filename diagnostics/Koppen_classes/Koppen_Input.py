@@ -48,25 +48,40 @@ testColors = {
         "EF": (104.,104.,104.),
     }
 
-def daysInFebruary(year, calendar = "Gregorian"):
-    if calendar == "365":
-        return 28.0
-    elif calendar == "Julian":
-        if year % 4 == 0:
-            return 29.0
-        else:
-            return 28.0
-    elif calendar == "Gregorian":
-        if ((year % 4 == 0) and (year % 400 == 0 or year % 100 != 0)):
-            return 29.0
-        else:
-            return 28.0
-    else:
-        return "Error invalid calendar: valid options are 'Julian', 'Gregorian', and '365'" 
+def is_leap(year, calendar='standard'):
+    if calendar in ('noleap', 'no_leap', '365day', '365_day'):
+        return False
+    elif calendar in ('allleap', 'all_leap', '366day', '366_day'):
+        return True
 
-def daysInMonths(year, calendar = "Gregorian"):
-    daysArr = np.array([31.0,daysInFebruary(year,calendar),31.0,30.0,31.0,30.0,31.0,31.0,30.0,31.0,30.0,31.0])
-    return daysArr
+    year = int(year)
+    is_julian_leap = (year % 4 == 0)
+    if calendar == 'julian':
+        return is_julian_leap
+    is_gregorian_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+    if calendar in ('proleptic_gregorian', 'prolepticgregorian'):
+        return is_gregorian_leap
+    elif calendar in ('gregorian', 'standard'):
+        if year > 1582:
+            return is_gregorian_leap
+        else:
+            return is_julian_leap
+    else:
+        raise NotImplementedError('Unsupported calendar {}'.format(calendar))
+
+def days_per_month(year, calendar='standard', dtype='float64'):
+    # http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#calendar
+    if calendar in ('360day', '360_day'):
+        return np.full(12, 30.0, dtype=dtype)
+
+    if is_leap(year, calendar=calendar):
+        feb_days = 29
+    else:
+        feb_days = 28
+    return np.array([31, feb_days, 31, 30, 31, 30,
+                     31,       31, 30, 31, 30, 31], 
+        dtype=dtype
+    )
     
     
 def climatology(x, startYear, calendar = "Gregorian"):
