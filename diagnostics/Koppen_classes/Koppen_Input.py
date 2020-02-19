@@ -3,15 +3,12 @@ Created on Oct 23, 2019
 
 @author: Diyor.Zakirov
 '''
-from netCDF4 import Dataset;
-import numpy as np;
-import math;
-import os;
-from Koppen import Koppen;
-from Climate import Climate;
-import multiprocessing as mp;
-#import timeit;
-#import cProfile
+from netCDF4 import Dataset
+import numpy as np
+import math
+import os
+from Koppen import Koppen
+from Climate import Climate
 
 #temperature = Dataset("/home/Diyor.Zakirov/tasLut.nc", "r")
 #precipitation = Dataset("/home/Diyor.Zakirov/pr.nc", "r")
