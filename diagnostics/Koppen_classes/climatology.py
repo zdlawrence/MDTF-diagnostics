@@ -115,7 +115,7 @@ class Climatology(object):
             xx = xx[i_start, i_end]
         # shape of -1 means "as many rows as needed"
         x_by_month = xx.reshape((-1, 12), order='C')
-        return np.average(x_by_month, weights=days_per_month, axis=0)
+        return np.ma.average(x_by_month, weights=days_per_month, axis=0)
 
     def annual_climatology(self, x, days_per_month, i_start=None, i_end=None):
         """Given 1D monthly timeseries x and 1D array of days per month returned 
@@ -129,7 +129,7 @@ class Climatology(object):
         xx = x.view()
         if i_start:
             xx = xx[i_start, i_end]
-        return np.average(xx, weights=days_per_month)
+        return np.ma.average(xx, weights=days_per_month)
 
     def make_climatologies(self, var):
         """Driver script to assemble climatologies for any number of variables
@@ -148,7 +148,7 @@ class Climatology(object):
                     self.monthly_climatology, 0, var, day_wts, t_start, t_end
                 )
             if self.annual:
-                day_wts.reshape(-1, order='C') # synonym for flatten
+                day_wts = day_wts.flatten(order='C')
                 self.annual[i, j, :,:] = np.apply_along_axis(
                     self.annual_climatology, 0, var, day_wts, t_start, t_end
                 )
