@@ -3,10 +3,11 @@ Created on Oct 23, 2019
 
 @author: Diyor.Zakirov
 '''
-from netCDF4 import Dataset
-import numpy as np
-import math
 import os
+import collections
+import datetime
+import netCDF4 as nc
+import numpy as np
 from Koppen import Koppen
 from Climate import Climate
 
@@ -48,7 +49,24 @@ testColors = {
         "EF": (104.,104.,104.),
     }
 
-def days_per_month(start_yr, end_yr, calendar='standard', dtype='float64'):
+def get_year_inds(date_range, time_var):
+    """Find indices in a netcdf date axis (of form "days since <ref date>")
+    corresponding to start and end (inclusive) of a range of years.
+    """
+    assert date_range[1] >= date_range[0]
+    # search instead of index math just to be sure
+    dt = datetime.datetime(date_range[0], 1, 1, 0, 0, 0)
+    nc_num = nc.date2num(dt, time_var.units, calendar=time_var.calendar)
+    i_start = np.searchsorted(time_var, nc_num, side='left')
+    
+    dt = datetime.datetime(date_range[1], 12, 31, 0, 0, 0)
+    nc_num = nc.date2num(dt, time_var.units, calendar=time_var.calendar)
+    i_end = np.searchsorted(time_var, nc_num, side='right')
+    
+    assert len(time_var[i_start:i_end]) == (date_range[1] - date_range[0] + 1)*12
+    return (i_start, i_end)
+
+def day_weights(date_range, calendar='standard', dtype=np.float64):
     """Given an (inclusive) range of years, output a numpy array of days per 
     month, handling all calendars recognized by CF conventions.
     Dimensions are (# of years x 12).
@@ -86,13 +104,13 @@ def days_per_month(start_yr, end_yr, calendar='standard', dtype='float64'):
                 31,       31, 30, 31, 30, 31]
     
     return np.array(
-        [_do_one_year(yr) for yr in range(start_yr, end_yr+1)],
+        [_do_one_year(yr) for yr in range(date_range[0], date_range[1] + 1)],
         dtype=dtype
     )
 
-def monthly_climatology(x, days_per_month):
+def monthly_climatology(x, days_per_month, i_start=None, i_end=None):
     """Given 1D monthly timeseries x and 2D array of days per month returned by
-    days_per_month(), return 1D vector of annual and monthly averages for all 
+    day_weights(), return 1D vector of annual and monthly averages for all 
     years in input.
 
     Pack annual and monthly data together for efficiency. 
@@ -101,18 +119,45 @@ def monthly_climatology(x, days_per_month):
     (= averages for respective months). Output[0] will be average of x over entire
     entire period, output[1] will be average over {Jan '00, Jan '01, Jan '02}, etc.
     """
+    xx = x.view()
+    if i_start:
+        xx = xx[i_start, i_end]
     # shape of -1 means "as many rows as needed"
-    x_by_month = x.reshape((-1, 12), order='C')
+    x_by_month = xx.reshape((-1, 12), order='C')
     mean = np.average(x_by_month, weights=days_per_month)
     monthly_means = np.average(x_by_month, weights=days_per_month, axis=0)
     # 0'th element is annual mean, 1-12 are now monthly means
     return np.insert(monthly_means, 0, mean)
 
+def make_climatologies(date_ranges, arrs, axes):
+    """Driver script to assemble monthly climatologies for any number of variables
+    provided on common axes (passed as a dict through 'axes'.) 'arrs' is a list
+    of numpy arrays (assumed to be (time x lat x lon)) to compute climatologies 
+    for. 
+    """
+    if not isinstance(date_ranges[0], collections.Iterable):
+        date_ranges = [date_ranges]
+    dtype = np.find_common_type([var.dtype for var in arrs])
+    # hard-coded 13 because monthly_climatology() gives monthly avgs + annual avg
+    clims = np.ma.masked_all(
+        (len(date_ranges), len(arrs), 13, len(axes['lat']), len(axes['lon'])),
+        dtype=dtype
+    )
+    for i, date_rng in enumerate(date_ranges):
+        i_start, i_end = get_year_inds(date_rng, axes['time'])
+        day_wts = day_weights(date_rng, calendar=axes['time'].calendar, dtype=dtype)
+        for j, var in enumerate(arrs):
+            # hard-coded 0 because we apply along time axis of var
+            clims[i, j, :,:,:] = np.apply_along_axis(
+                monthly_climatology, 0, var, day_wts, i_start, i_end
+            )
+    return clims
     
+# -------------------------------------
 
 def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calendar = "Gregorian"):
-    temperature = Dataset(tempFile, "r")
-    precipitation = Dataset(precipFile, "r")
+    temperature = nc.Dataset(tempFile, "r")
+    precipitation = nc.Dataset(precipFile, "r")
     
     tArr = temperature.variables['tasLut'][:,:,:].transpose()
     pArr = precipitation.variables['pr'][:,:,:].transpose()
