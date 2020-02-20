@@ -5,7 +5,7 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var_names, common_axes, dtype=np.float64, 
+    def __init__(self, var_names, date_ranges, common_axes, dtype=np.float64, 
         do_monthly=True, do_annual=True):
         """Allocate blank arrays to hold all data. Do this so we only have to 
         have complete timeseries for a single in memory at once.
@@ -14,25 +14,26 @@ class Climatology(object):
         self.dtype = dtype
         self.time = common_axes.variables['time']
         self.calendar = self.time.calendar
-        n_lat = common_axes.variables['lat'].size
-        n_lon = common_axes.variables['lon'].size
+        _latlon_dims = [
+            common_axes.variables['lat'].size,
+            common_axes.variables['lon'].size
+        ]
 
         if not isinstance(date_ranges[0], collections.Iterable):
             date_ranges = [date_ranges]
         self.date_ranges = date_ranges
+        self.multi_range = (len(date_ranges) > 1)
+        _range_dims = [len(date_ranges), len(var_names)]
 
         if do_annual:
             self.annual = np.ma.masked_all(
-                (len(date_ranges), len(var_names), n_lat, n_lon),
-                dtype=dtype
+                tuple(_range_dims + _latlon_dims), dtype=dtype
             )
         else:
             self.annual = None
-
         if do_monthly:
             self.monthly = np.ma.masked_all(
-                (len(date_ranges), len(var_names), 12, n_lat, n_lon),
-                dtype=dtype
+                tuple(_range_dims + [12] + _latlon_dims), dtype=dtype
             )
         else:
             self.monthly = None
