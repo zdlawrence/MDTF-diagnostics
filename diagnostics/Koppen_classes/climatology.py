@@ -8,7 +8,7 @@ class Climatology(object):
     def __init__(self, var_names, date_ranges, common_axes, dtype=np.float64, 
         do_monthly=True, do_annual=True):
         """Allocate blank arrays to hold all data. Do this so we only have to 
-        have complete timeseries for a single in memory at once.
+        have complete timeseries for a single variable in memory at once.
         """
         self.var_names = var_names
         self.dtype = dtype
@@ -112,7 +112,7 @@ class Climatology(object):
         """
         xx = x.view()
         if i_start:
-            xx = xx[i_start, i_end]
+            xx = xx[i_start:i_end]
         # shape of -1 means "as many rows as needed"
         x_by_month = xx.reshape((-1, 12), order='C')
         return np.ma.average(x_by_month, weights=days_per_month, axis=0)
@@ -128,7 +128,7 @@ class Climatology(object):
         """
         xx = x.view()
         if i_start:
-            xx = xx[i_start, i_end]
+            xx = xx[i_start:i_end]
         return np.ma.average(xx, weights=days_per_month)
 
     def make_climatologies(self, var):

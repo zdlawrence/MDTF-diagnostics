@@ -75,7 +75,6 @@ class TestKoppenClasses(unittest.TestCase):
             [  -2.0,     1.0,    3.0,   10.0,   13.0,  16.0,  20.0,  22.1,   19.0,   12.0,    3.0,    1.0],
             [50.4, 44.32, 45.38, 51.53, 62.79, 78.01, 79.11, 78.94, 69.88, 61.89, 54.56, 53.43]
         )
-        self.assertEqual(self.kp.makeZones(myAf), 'Af')
 
     def test_Cfb(self):     
         self._koppen_wrapper(
