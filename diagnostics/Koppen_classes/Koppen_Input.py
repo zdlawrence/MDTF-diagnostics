@@ -8,6 +8,8 @@ import collections
 import datetime
 import netCDF4 as nc
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 from Koppen import Koppen
 from Climate import Climate
 
@@ -106,7 +108,26 @@ def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calen
                 #totalTime += time2-time1
                 
     return zonesList             
+
+
+def printGraph(startYear, endYear, referenceYear, tempFile, precipFile, calendar="Gregorian"):
+    dataTest = [[[0 for k in range(3)] for j in range(180)] for i in range(360)]
+
+    fig = plt.figure(num=None, figsize=(12, 16))
     
+    data = netcdfToKoppen(startYear,endYear,referenceYear,tempFile,precipFile,calendar)
+    dataFlip = list(map(list,zip(*data)))
+    m=Basemap(projection='cyl',lat_ts=10,llcrnrlon=0,
+               urcrnrlon=360,llcrnrlat=-90,urcrnrlat=90,
+               resolution='c')
+    
+    m.drawcoastlines()
+    
+    plt.imshow(dataFlip,interpolation='nearest', origin='lower', extent=[0,360,-90,90])
+
+    plt.show()
+
+
 if __name__ == '__main__':
     pass
     #start = timeit.default_timer()
