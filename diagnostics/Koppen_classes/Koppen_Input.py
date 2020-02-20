@@ -48,71 +48,66 @@ testColors = {
         "EF": (104.,104.,104.),
     }
 
-def is_leap(year, calendar='standard'):
-    if calendar in ('noleap', 'no_leap', '365day', '365_day'):
-        return False
-    elif calendar in ('allleap', 'all_leap', '366day', '366_day'):
-        return True
-
-    year = int(year)
-    is_julian_leap = (year % 4 == 0)
-    if calendar == 'julian':
-        return is_julian_leap
-    is_gregorian_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
-    if calendar in ('proleptic_gregorian', 'prolepticgregorian'):
-        return is_gregorian_leap
-    elif calendar in ('gregorian', 'standard'):
-        if year > 1582:
-            return is_gregorian_leap
-        else:
-            return is_julian_leap
-    else:
-        raise NotImplementedError('Unsupported calendar {}'.format(calendar))
-
-def days_per_month(year, calendar='standard', dtype='float64'):
+def days_per_month(start_yr, end_yr, calendar='standard', dtype='float64'):
+    """Given an (inclusive) range of years, output a numpy array of days per 
+    month, handling all calendars recognized by CF conventions.
+    Dimensions are (# of years x 12).
+    """
     # http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#calendar
-    if calendar in ('360day', '360_day'):
-        return np.full(12, 30.0, dtype=dtype)
+    def _is_leap(year):
+        if calendar in ('noleap', 'no_leap', '365day', '365_day'):
+            return False
+        elif calendar in ('allleap', 'all_leap', '366day', '366_day'):
+            return True
 
-    if is_leap(year, calendar=calendar):
-        feb_days = 29
-    else:
-        feb_days = 28
-    return np.array([31, feb_days, 31, 30, 31, 30,
-                     31,       31, 30, 31, 30, 31], 
+        year = int(year)
+        is_julian_leap = (year % 4 == 0)
+        if calendar == 'julian':
+            return is_julian_leap
+        is_gregorian_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+        if calendar in ('proleptic_gregorian', 'prolepticgregorian'):
+            return is_gregorian_leap
+        elif calendar in ('gregorian', 'standard'):
+            if year > 1582:
+                return is_gregorian_leap
+            else:
+                return is_julian_leap
+        else:
+            raise NotImplementedError('Unsupported calendar {}'.format(calendar))
+    
+    def _do_one_year(year):
+        if calendar in ('360day', '360_day'):
+            return [30] * 12
+        if _is_leap(year):
+            feb_days = 29
+        else:
+            feb_days = 28
+        return [31, feb_days, 31, 30, 31, 30,
+                31,       31, 30, 31, 30, 31]
+    
+    return np.array(
+        [_do_one_year(yr) for yr in range(start_yr, end_yr+1)],
         dtype=dtype
     )
-    
-    
-def climatology(x, startYear, calendar = "Gregorian"):
-    
-    if(len(x) % 12 != 0):
-        return "Error only full years allowed"
-        sys.exit()
-    
-    nyears = int(len(x) / 12)
-    
-    asdf = np.empty((12,nyears))
-    
-    
-    for i in range(0,12):
-        for j in range(0,nyears):
-            asdf[i,j] = x[12*j + i]
-            
-    #asdfMean = np.mean(asdf,axis = 1)
 
+def monthly_climatology(x, days_per_month):
+    """Given 1D monthly timeseries x and 2D array of days per month returned by
+    days_per_month(), return 1D vector of annual and monthly averages for all 
+    years in input.
 
-    days = np.empty((12,nyears))
-    for j in range(0,nyears):
-        days[:,j] = daysInMonths(startYear+j, calendar)
-        
-    #daysMean = np.mean(days, axis = 1)
-    
-    clim = np.empty(12)
-    for i in range(0,12):
-        clim[i] = np.average(asdf[i,:], weights = days[i,:])
-    
-    return clim
+    Pack annual and monthly data together for efficiency. 
+
+    Eg: if date range is 2000-2002, x should have 3*12 = 36 entries 
+    (= averages for respective months). Output[0] will be average of x over entire
+    entire period, output[1] will be average over {Jan '00, Jan '01, Jan '02}, etc.
+    """
+    # shape of -1 means "as many rows as needed"
+    x_by_month = x.reshape((-1, 12), order='C')
+    mean = np.average(x_by_month, weights=days_per_month)
+    monthly_means = np.average(x_by_month, weights=days_per_month, axis=0)
+    # 0'th element is annual mean, 1-12 are now monthly means
+    return np.insert(monthly_means, 0, mean)
+
     
 
 def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calendar = "Gregorian"):
