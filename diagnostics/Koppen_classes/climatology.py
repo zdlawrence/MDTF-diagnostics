@@ -100,7 +100,7 @@ class Climatology(object):
             dtype=self.dtype
         )
 
-    def monthly_climatology(self, x, days_per_month, i_start=None, i_end=None):
+    def monthly_climatology(self, x, days_per_month, slice=None):
         """Given 1D monthly timeseries x and 2D array of days per month returned
         by day_weights(), return 1D vector of monthly averages for years in input 
         specified by indices, or all years if these aren't specified.
@@ -110,13 +110,13 @@ class Climatology(object):
         {Jan '00, Jan '01, Jan '02}, etc.
         """
         xx = x.view()
-        if i_start:
-            xx = xx[i_start:i_end]
+        if slice is not None:
+            xx = xx[slice]
         # shape of -1 means "as many rows as needed"
         x_by_month = xx.reshape((-1, 12), order='C')
         return np.ma.average(x_by_month, weights=days_per_month, axis=0)
 
-    def annual_climatology(self, x, days_per_month, i_start=None, i_end=None):
+    def annual_climatology(self, x, days_per_month, slice=None):
         """Given 1D monthly timeseries x and 1D array of days per month returned 
         by flattening day_weights(), return annual average for years in input 
         specified by indices, or all years if these aren't specified.
@@ -126,8 +126,8 @@ class Climatology(object):
         entire period.
         """
         xx = x.view()
-        if i_start:
-            xx = xx[i_start:i_end]
+        if slice is not None:
+            xx = xx[slice]
         return np.ma.average(xx, weights=days_per_month)
 
     def make_climatologies(self, var, time_var):
@@ -140,6 +140,7 @@ class Climatology(object):
         assert j # is not empty; name was found
         try:
             t_start, t_end = self.get_year_inds(time_var)
+            t_slice = slice(t_start, t_end)
             day_wts = self.day_weights(time_var)
         except Exception as exc:
             print('Error in parsing time axis for {}:'.format(var.name))
@@ -159,11 +160,11 @@ class Climatology(object):
 
         if self.monthly:
             self.monthly[j, :,:,:] = np.apply_along_axis(
-                self.monthly_climatology, t_axis_pos, var, day_wts, t_start, t_end
+                self.monthly_climatology, t_axis_pos, var, day_wts, t_slice
             )
         if self.annual:
             day_wts = day_wts.flatten(order='C')
             self.annual[j, :,:] = np.apply_along_axis(
-                self.annual_climatology, t_axis_pos, var, day_wts, t_start, t_end
+                self.annual_climatology, t_axis_pos, var, day_wts, t_slice
             )
         
