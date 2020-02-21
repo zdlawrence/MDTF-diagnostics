@@ -5,12 +5,16 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var_names, date_ranges, common_axes, dtype=np.float64, 
+    def __init__(self, var_names, date_range, common_axes, dtype=np.float64, 
         do_monthly=True, do_annual=True):
         """Allocate blank arrays to hold all data. Do this so we only have to 
         have complete timeseries for a single variable in memory at once.
         """
         self.var_names = var_names
+        assert date_range[1] >= date_range[0]
+        self.start_yr = date_range[0]
+        self.end_yr = date_range[1]
+
         self.dtype = dtype
         self.time = common_axes.variables['time']
         self.calendar = self.time.calendar
@@ -18,12 +22,7 @@ class Climatology(object):
             common_axes.variables['lat'].size,
             common_axes.variables['lon'].size
         ]
-
-        if not isinstance(date_ranges[0], collections.Iterable):
-            date_ranges = [date_ranges]
-        self.date_ranges = date_ranges
-        self.multi_range = (len(date_ranges) > 1)
-        _range_dims = [len(date_ranges), len(var_names)]
+        _range_dims = [len(var_names)]
 
         if do_annual:
             self.annual = np.ma.masked_all(
@@ -38,25 +37,23 @@ class Climatology(object):
         else:
             self.monthly = None
 
-    def get_year_inds(self, date_range):
+    def get_year_inds(self):
         """Find indices in a netcdf date axis (of form "days since <ref date>")
         corresponding to start and end (inclusive) of a range of years.
         """
-        assert date_range[1] >= date_range[0]
         # search instead of index math just to be sure
-        dt = datetime.datetime(date_range[0], 1, 1, 0, 0, 0)
+        dt = datetime.datetime(self.start_yr, 1, 1, 0, 0, 0)
         nc_num = nc.date2num(dt, self.time.units, calendar=self.calendar)
         i_start = np.searchsorted(self.time, nc_num, side='left')
         
-        dt = datetime.datetime(date_range[1], 12, 31, 0, 0, 0)
+        dt = datetime.datetime(self.end_yr, 12, 31, 0, 0, 0)
         nc_num = nc.date2num(dt, self.time.units, calendar=self.calendar)
         i_end = np.searchsorted(self.time, nc_num, side='right')
         
-        assert len(self.time[i_start:i_end]) \
-            == (date_range[1] - date_range[0] + 1)*12
+        assert len(self.time[i_start:i_end]) == 12*(self.end_yr - self.start_yr + 1)
         return (i_start, i_end)
 
-    def day_weights(self, date_range):
+    def day_weights(self):
         """Given an (inclusive) range of years, output a numpy array of days per 
         month, handling all calendars recognized by CF conventions.
         Dimensions are (# of years x 12).
@@ -97,7 +94,7 @@ class Climatology(object):
                     31,       31, 30, 31, 30, 31]
         
         return np.array(
-            [_do_one_year(yr) for yr in range(date_range[0], date_range[1] + 1)],
+            [_do_one_year(yr) for yr in range(self.start_yr, self.end_yr + 1)],
             dtype=self.dtype
         )
 
@@ -139,17 +136,16 @@ class Climatology(object):
         """
         j = self.var_names.index(var.name)
         assert j # is not empty; name was found
-        for i, date_rng in enumerate(self.date_ranges):
-            t_start, t_end = self.get_year_inds(date_rng)
-            day_wts = self.day_weights(date_rng)
-            # hard-coded 0 below because we apply along time axis of var
-            if self.monthly:
-                self.monthly[i, j, :,:,:] = np.apply_along_axis(
-                    self.monthly_climatology, 0, var, day_wts, t_start, t_end
-                )
-            if self.annual:
-                day_wts = day_wts.flatten(order='C')
-                self.annual[i, j, :,:] = np.apply_along_axis(
-                    self.annual_climatology, 0, var, day_wts, t_start, t_end
-                )
-            
+        t_start, t_end = self.get_year_inds()
+        day_wts = self.day_weights()
+        # hard-coded 0 below because we apply along time axis of var
+        if self.monthly:
+            self.monthly[j, :,:,:] = np.apply_along_axis(
+                self.monthly_climatology, 0, var, day_wts, t_start, t_end
+            )
+        if self.annual:
+            day_wts = day_wts.flatten(order='C')
+            self.annual[j, :,:] = np.apply_along_axis(
+                self.annual_climatology, 0, var, day_wts, t_start, t_end
+            )
+        
