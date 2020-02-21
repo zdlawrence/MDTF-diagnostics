@@ -83,6 +83,116 @@ class NCCopyMixin(object):
             NCCopyMixin.copy_variable(name, src_ds, dst_ds)
 
 
+class NCCommonAxis(object):
+    """Class for working with a collection of netCDF Datasets (assumed to be one
+    Dataset per variable) on a set of common axes. 
+    """
+    def __init__(self, **ds_dict):
+        self.ds_dict = ds_dict
+
+        self.my_ax_names = collections.OrderedDict()
+        _d = {'time_coord':'time', 'lat_coord':'lat', 'lon_coord':'lon'}
+        for k,v in _d.items():
+            self.my_ax_names[k] = v
+
+        self.file_var_names = dict()
+        self.file_ax_names = collections.OrderedDict()
+        self.names_from_envvars()
+
+        # used for in-memory storage only, but netCDF4 requires we pass a filename
+        self.common_axes = nc.Dataset('dummy_filename.nc', diskless=True, persist=False)
+        self.common_dtype = np.float64
+
+    # -----------------------------------------------------------
+
+    def names_from_envvars(self):
+        for envvar_name, ds in self.ds_dict.items():
+            assert envvar_name in os.environ
+            self.file_var_names[envvar_name] = os.environ[envvar_name]
+            assert self.file_var_names[envvar_name] in ds.variables
+        
+        for envvar_name in self.my_ax_names:
+            assert envvar_name in os.environ
+            self.file_ax_names[envvar_name] = os.environ[envvar_name]
+
+    def collect_axes(self):
+        for ds in self.ds_dict.values():
+            self.copy_axes(ds, self.common_axes, bounds=False)
+
+            for k in my_ax_names:
+            old_ax = file_ax_names[k]
+            new_ax = my_ax_names[k]
+            dst_ds.renameVariable(old_ax, new_ax)
+            dst_ds.renameDimension(old_ax, new_ax)
+
+    def get_axis(self, my_ax_name):
+        pass
+
+
+def prep_taslut(ds, file_var_name):
+    var = ds.variables[file_var_name]
+    if len(var.dimensions) == 3:
+        pass # ok
+    elif len(var.dimensions) == 4:
+        ax4_name = set(var.dimensions).difference(set(file_ax_names.values()))
+        ax4_name = list(ax4_name)[0]
+        ax4_pos = var.dimensions.index(ax4_name)
+        ax4 = ds.variables[ax4_name]
+        ind4 = 0 # default slice
+        try:
+            lu_inds = ax4.getncattr('flag_values')
+            if not isinstance(lu_inds, collections.Iterable):
+                lu_inds = [int(s) for s in lu_inds.split()]
+            lu_vals = ax4.getncattr('flag_meanings')
+            if not isinstance(lu_vals, collections.Iterable):
+                lu_vals = lu_vals.split()
+            assert 'psl' in lu_vals:
+            ind4 = lu_inds[lu_vals.index('psl')]
+        except:
+            raise
+        var = np.take(var, ind4, axis=ax4_pos)
+    else:
+        raise Exception("Can't handle 'tas' with dimensions {}".format(var.dimensions))
+    var = verify_3d_axes(var)
+        
+    if hasattr(var, 'units') and 'k' not in var.units.lower():
+        print('Warning, taslut not in Kelvin, assuming celsius')
+    else:
+        var = var - 273.15
+        
+    var = np.ma.masked_invalid(var)
+    var = np.ma.masked_less(var, 0.0)
+    return var
+
+def prep_pr(ds, file_var_name):
+    var = ds.variables[file_var_name]
+    
+    # units
+    
+    var = np.ma.masked_invalid(var)
+    var = np.ma.masked_less(var, 0.0)
+    return var
+
+def run_koppen(foo):
+    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', "r", keepweakref=True)
+    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', "r", keepweakref=True)
+    landmask_ds = XXX
+
+    ds = NCCommonAxis(tas_var=tas_ds, pr_var=pr_ds)
+
+    clim = Climatology(var_names, date_ranges, common_axes, dtype=dtype, 
+        do_monthly=True, do_annual=True)
+
+    tas = prep_taslut(tas_ds, 'tas_var')
+    clim.make_climatologies(tas)
+    tas_ds.close()
+
+    pr = prep_pr(pr_ds, 'pr_var')
+    clim.make_climatologies(pr)
+    pr_ds.close()
+
+
+
 def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calendar = "Gregorian"):
     temperature = nc.Dataset(tempFile, "r")
     precipitation = nc.Dataset(precipFile, "r")
