@@ -5,7 +5,6 @@ Created on Oct 23, 2019
 '''
 import os
 import collections
-import datetime
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,47 +12,76 @@ from mpl_toolkits.basemap import Basemap
 from Koppen import Koppen
 from Climate import Climate
 
-#temperature = Dataset("/home/Diyor.Zakirov/tasLut.nc", "r")
-#precipitation = Dataset("/home/Diyor.Zakirov/pr.nc", "r")
+class NCCopyMixin(object):
+    """Collection of methods to copy items from one netcdf Dataset to another,
+    since this isn't provided directly by the netCDF4 module.
+    Based on discussion in https://stackoverflow.com/a/49592545.
+    """
+    @staticmethod
+    def copy_variable(var_name, src_ds, dst_ds):
+        assert var_name in src_ds.variables
+        var = src_ds.variables[var_name]
+        if var_name not in dst_ds.variables:
+            dst_ds.createVariable(var_name, var.datatype, var.dimensions)
+            # copy variable attributes first, all at once via dictionary
+            dst_ds[var_name].setncatts(src_ds[var_name].__dict__)
+            # copy data
+            dst_ds[var_name][:] = src_ds[var_name][:]
+        else:
+            # netcdf library doesn't implement deleting variables, so no overwrite
+            assert var.shape == dst_ds.variables[var_name].shape
 
-zonesList = [[[0 for i in range(3)] for x in range(180)] for y in range(360)]
+    @staticmethod
+    def copy_dimension(dim_name, src_ds, dst_ds):
+        assert dim_name in src_ds.dimensions
+        dim = src_ds.dimensions[dim_name]
+        if dim_name not in dst_ds.dimensions:
+            dst_ds.createDimension(
+                dim_name, (dim.size if not dim.isunlimited() else None)
+            )
+        else:
+            # netcdf library doesn't implement deleting dimensions, so no overwrite
+            assert dim.size == dst_ds.dimensions[dim_name].size
 
-testColors = {
-        "Af":(0.,0.,255.),
-        "Am":(0.,120.,255.),
-        "Aw":(70.,170.,250.),
-        "BWh":(255.,0.,0.),
-        "BWk":(255.,150.,150.),
-        "BSh":(245.,165.,0.),
-        "BSk":(255.,220.,100.),
-        "Csa":(255.,255.,0.),
-        "Csb":(198.,199.,0.),
-        "Csc":(150.,150.,0.),
-        "Cwa":(150.,255.,150.),
-        "Cwb":(99.,199.,99.),
-        "Cwc":(50.,150.,50.),
-        "Cfa":(200.,255.,80.),
-        "Cfb":(102.,255.,51.),
-        "Cfc":(50.,199.,0.),
-        "Dsa":(255.,0.,254.),
-        "Dsb":(198.,0.,199.),
-        "Dsc":(150.,50.,149.),
-        "Dsd":(150.,100.,149.),
-        "Dwa":(171.,177.,255.),
-        "Dwb":(90.,199.,219.),
-        "Dwc":(76.,81.,181.),
-        "Dwd":(50.,0.,135.),
-        "Dfa":(0.,255.,255.),
-        "Dfb":(56.,199.,255.),
-        "Dfc":(0.,126.,125.),
-        "Dfd":(0.,69.,94.),
-        "ET": (178.,178.,178.),
-        "EF": (104.,104.,104.),
-    }
+    @staticmethod
+    def copy_axes(src_ds, dst_ds, bounds=True):
+        for dim_name in src_ds.dimensions:
+            NCCopyMixin.copy_dimension(dim_name, src_ds, dst_ds)
+            if dim_name in src_ds.variables:
+                NCCopyMixin.copy_variable(dim_name, src_ds, dst_ds)
 
+        if not bounds:
+            return
+        bounds_vars = [v for v in src_ds.variables if v.lower().endswith('_bnds')]
+        for var_name in bounds_vars:
+            NCCopyMixin.copy_variable(var_name, src_ds, dst_ds)
 
-    
-# -------------------------------------
+    @staticmethod
+    def copy_dataset(src_ds, dst_ds,
+        copy_attrs=True, dimensions=None, variables=None, exclude_variables=None):
+        def _coerce_to_iter(x):
+            return (x if isinstance(x, collections.Iterable) else [x])
+
+        if dimensions is None:
+            dimensions = src_ds.dimensions
+        else:
+            dimensions = _coerce_to_iter(dimensions)
+        if variables is None:
+            variables = src_ds.variables
+        else:
+            variables = _coerce_to_iter(variables)
+        if exclude_variables is not None:
+            exclude_variables = set(_coerce_to_iter(exclude_variables))
+            variables = set(variables).difference(exclude_variables)
+
+        # copy global attributes all at once via dictionary
+        if copy_attrs:
+            dst_ds.setncatts(src_ds.__dict__)
+        for name in dimensions:
+            NCCopyMixin.copy_dimension(name, src_ds, dst_ds)
+        for name in variables:
+            NCCopyMixin.copy_variable(name, src_ds, dst_ds)
+
 
 def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calendar = "Gregorian"):
     temperature = nc.Dataset(tempFile, "r")
@@ -109,6 +137,40 @@ def netcdfToKoppen(startYear, endYear, referenceYear,tempFile, precipFile, calen
                 
     return zonesList             
 
+# -------------------------------------
+
+testColors = {
+        "Af":(0.,0.,255.),
+        "Am":(0.,120.,255.),
+        "Aw":(70.,170.,250.),
+        "BWh":(255.,0.,0.),
+        "BWk":(255.,150.,150.),
+        "BSh":(245.,165.,0.),
+        "BSk":(255.,220.,100.),
+        "Csa":(255.,255.,0.),
+        "Csb":(198.,199.,0.),
+        "Csc":(150.,150.,0.),
+        "Cwa":(150.,255.,150.),
+        "Cwb":(99.,199.,99.),
+        "Cwc":(50.,150.,50.),
+        "Cfa":(200.,255.,80.),
+        "Cfb":(102.,255.,51.),
+        "Cfc":(50.,199.,0.),
+        "Dsa":(255.,0.,254.),
+        "Dsb":(198.,0.,199.),
+        "Dsc":(150.,50.,149.),
+        "Dsd":(150.,100.,149.),
+        "Dwa":(171.,177.,255.),
+        "Dwb":(90.,199.,219.),
+        "Dwc":(76.,81.,181.),
+        "Dwd":(50.,0.,135.),
+        "Dfa":(0.,255.,255.),
+        "Dfb":(56.,199.,255.),
+        "Dfc":(0.,126.,125.),
+        "Dfd":(0.,69.,94.),
+        "ET": (178.,178.,178.),
+        "EF": (104.,104.,104.),
+    }
 
 def printGraph(startYear, endYear, referenceYear, tempFile, precipFile, calendar="Gregorian"):
     dataTest = [[[0 for k in range(3)] for j in range(180)] for i in range(360)]
