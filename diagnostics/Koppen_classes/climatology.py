@@ -5,30 +5,52 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var_names, date_range, latlon_dims, dtype=np.float64, 
-        do_monthly=True, do_annual=True):
-        """Allocate blank arrays to hold all data. Do this so we only have to 
-        have complete timeseries for a single variable in memory at once.
+    def __init__(self, var, time_var, date_range, do_monthly=True, do_annual=True):
+        """Compute monthly and annual climatologies for a single variable.
+
+        Args:
+            var: NetCDF4 `Variable` to compute averages of.
+            time_var: NetCDF4 `Variable` corresponding to the 'time' dimension of 
+                `var`.
+            date_range: Two-element list of [start year, end year]. Intervals 
+                are inclusive.
+            do_monthly: True to compute monthly climatologies.
+            do_annual: True to compute annual climatologies.
         """
-        self.var_names = var_names
         assert date_range[1] >= date_range[0]
         self.start_yr = date_range[0]
         self.end_yr = date_range[1]
+        self.dtype = var.dtype
+        try:
+            t_start, t_end = self.get_year_inds(time_var)
+            t_slice = slice(t_start, t_end)
+            day_wts = self.day_weights(time_var)
+        except Exception as exc:
+            print('Error in parsing time axis for {}:'.format(var.name))
+            print(exc)
+            raise exc
+        try:
+            t_axis_pos = var.dimensions.index(time_var.name)
+            assert t_axis_pos
+        except AssertionError:
+            print('Error in dimensions of {}:'.format(var.name))
+            print('{}: {} -> {}'.format(var.name, var.dimensions, var.shape))
+            raise
 
-        self.dtype = dtype
-        self.latlon_dims = list(latlon_dims)
-        if do_annual:
-            self.annual = np.ma.masked_all(
-                tuple([len(var_names)] + self.latlon_dims), dtype=dtype
-            )
-        else:
-            self.annual = None
         if do_monthly:
-            self.monthly = np.ma.masked_all(
-                tuple([len(var_names), 12] + self.latlon_dims), dtype=dtype
+            self.monthly = np.apply_along_axis(
+                self.monthly_climatology, t_axis_pos, var, day_wts, t_slice
             )
         else:
             self.monthly = None
+
+        if do_annual:
+            day_wts = day_wts.flatten(order='C')
+            self.annual = np.apply_along_axis(
+                self.annual_climatology, t_axis_pos, var, day_wts, t_slice
+            )
+        else:
+            self.annual = None
 
     def get_year_inds(self, time_var):
         """Find indices in a netcdf date axis (of form "days since <ref date>")
@@ -129,42 +151,3 @@ class Climatology(object):
         if slice is not None:
             xx = xx[slice]
         return np.ma.average(xx, weights=days_per_month)
-
-    def make_climatologies(self, var, time_var):
-        """Driver script to assemble climatologies for any number of variables
-        provided on common axes (passed as a dict through 'axes'.) 'arrs' is a list
-        of numpy arrays (assumed to be (time x lat x lon)) to compute climatologies 
-        for. 
-        """
-        j = self.var_names.index(var.name)
-        assert j # is not empty; name was found
-        try:
-            t_start, t_end = self.get_year_inds(time_var)
-            t_slice = slice(t_start, t_end)
-            day_wts = self.day_weights(time_var)
-        except Exception as exc:
-            print('Error in parsing time axis for {}:'.format(var.name))
-            print(exc)
-            raise exc
-        try:
-            t_axis_pos = var.dimensions.index(time_var.name)
-            assert t_axis_pos
-            dims = list(var.shape)
-            del dims[t_axis_pos]
-            assert dims == self.latlon_dims
-        except AssertionError:
-            print('Error in dimensions of {}:'.format(var.name))
-            print('{}: {} -> {}'.format(var.name, var.dimensions, var.shape))
-            print('Expected lat x lon of size {}'.format(self.latlon_dims))
-            raise
-
-        if self.monthly:
-            self.monthly[j, :,:,:] = np.apply_along_axis(
-                self.monthly_climatology, t_axis_pos, var, day_wts, t_slice
-            )
-        if self.annual:
-            day_wts = day_wts.flatten(order='C')
-            self.annual[j, :,:] = np.apply_along_axis(
-                self.annual_climatology, t_axis_pos, var, day_wts, t_slice
-            )
-        
