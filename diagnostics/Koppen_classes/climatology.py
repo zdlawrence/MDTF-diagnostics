@@ -52,7 +52,7 @@ class Climatology(object):
             raise exc
 
         dts = [self.num2date(t) for t in time_var[t_slice]]
-        self.months = [dt.month for dt in dts]
+        self.months = np.array([dt.month for dt in dts], dtype=np.int8)
         if do_day_weights:
             yr_mons = [(dt.year, dt.month) for dt in dts]
             self.day_weights = np.array([
@@ -154,42 +154,60 @@ class Climatology(object):
             ))
         return slice(i_start, i_end)
 
-    def get_subannual(self, var, month_labels):
-        """Given 1D monthly timeseries x and 2D array of days per month returned
-        by day_weights(), return 1D vector of monthly averages for years in input 
-        specified by indices, or all years if these aren't specified.
-
-        Eg: if date range is 2000-2002, x should have 3*12 = 36 entries 
-        (= averages for respective months). Output[0] will be average of x over
-        {Jan '00, Jan '01, Jan '02}, etc.
+    def get_monthly(self, var):
+        """Given same NetCDF4 Variable used to initialize object, return average
+        for each month over entire analysis period.
+        
+        If var has dimensions (t x n_lat x n_lon), returned array will have
+        dimensions (12 x n_lat x n_lon), regardless of which axis is the time
+        axis.
         """
-        def get_subannual_t_axis(t_series, day_wts, arr_mask):
-            return np.ma.average(t_series[arr_mask], weights=day_wts[arr_mask])
-
-        assert len(month_labels) == 12
-        unique_labels = sorted(set(month_labels))
-        vv = var[self.var_slices] # should only be a view, not a copy
-        dims = tuple([len(unique_labels)] + self.latlon_dims)
+        vv = var[self.var_slices]
+        dims = tuple([12] + self.latlon_dims)
+        ans_slice = [slice(None)] * len(dims)
         ans = np.ma.masked_all(dims, dtype=self.dtype)
-        for idx, label in enumerate(unique_labels):
-            arr_mask = np.asarray(self.months == label)
-            ans[idx, :,:,:] = np.apply_along_axis(
-                get_subannual_t_axis, self.t_axis_pos, vv, self.day_weights, arr_mask
+        # Small number of months, so no need to optimize this loop
+        for m in range(1,13):
+            new_wts = np.where(self.months == m, self.day_weights, 0.0)
+            ans_slice[0] = slice(m)
+            ans[tuple(ans_slice)] = np.ma.average(
+                vv, axis=self.t_axis_pos, weights=new_wts
             )
+        return ans
 
-    def get_annual(self, var):
-        """Given 1D monthly timeseries x and 1D array of days per month returned 
-        by flattening day_weights(), return annual average for years in input 
-        specified by indices, or all years if these aren't specified.
+    def get_seasonal(self, var, month_labels):
+        """Given same NetCDF4 Variable used to initialize object and a list of
+        lists defining seasons, return average for each season over entire 
+        analysis period.
 
-        Eg: if date range is 2000-2002, x should have 3*12 = 36 entries 
-        (= averages for respective months). Output will be average of x over
-        entire period.
+        The first axis of the answer will always correspond to the entries in
+        month_labels. For example, with month_labels = [(12,1,2), (6,7,8)],
+        ans[0, :,:,...] will be the DJF average and ans[1, :,:,...] will be the
+        JJA average.
         """
-        def get_annual_t_axis(t_series, day_wts):
-            return np.ma.average(t_series, weights=day_wts)
+        vv = var[self.var_slices]
+        dims = tuple([len(month_labels)] + self.latlon_dims)
+        ans_slice = [slice(None)] * len(dims)
+        ans = np.ma.masked_all(dims, dtype=self.dtype)
+        # Small number of seasons, so no need to optimize this loop
+        for idx, label in enumerate(month_labels):
+            mask = [(m in label) for m in self.months]
+            new_wts = np.where(mask, self.day_weights, 0.0)
+            ans_slice[0] = slice(idx)
+            ans[tuple(ans_slice)] = np.ma.average(
+                vv, axis=self.t_axis_pos, weights=new_wts
+            )
+        return ans
 
+    def get_mean(self, var):
+        """Given same NetCDF4 Variable used to initialize object, return average
+        over entire analysis period.
+        
+        If var has dimensions (t x n_lat x n_lon), returned array will have
+        dimensions (n_lat x n_lon) (true regardless of which axis is the time
+        axis).
+        """
         vv = var[self.var_slices] # should only be a view, not a copy
-        return np.apply_along_axis(
-            get_annual_t_axis, self.t_axis_pos, vv, self.day_weights
+        return np.ma.average(
+            vv, axis=self.t_axis_pos, weights=self.day_weights
         )
