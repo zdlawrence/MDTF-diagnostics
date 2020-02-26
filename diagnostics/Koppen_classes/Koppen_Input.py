@@ -12,13 +12,23 @@ from mpl_toolkits.basemap import Basemap
 from Koppen import Koppen
 from Climate import Climate
 
-class NCCopyMixin(object):
-    """Collection of methods to copy items from one netcdf Dataset to another,
-    since this isn't provided directly by the netCDF4 module.
+def copy_axis(ax_name, src_ds, dst_ds, bounds=True):
+    """Copy Dimension and associated Variable from one one netCDF4 Dataset to 
+    another, since this isn't provided directly by the netCDF4 module. If 
     Based on discussion in https://stackoverflow.com/a/49592545.
     """
-    @staticmethod
-    def copy_variable(var_name, src_ds, dst_ds):
+    def _copy_dimension(dim_name):
+        assert dim_name in src_ds.dimensions
+        dim = src_ds.dimensions[dim_name]
+        if dim_name not in dst_ds.dimensions:
+            dst_ds.createDimension(
+                dim_name, (dim.size if not dim.isunlimited() else None)
+            )
+        else:
+            # netcdf library doesn't implement deleting dimensions, so no overwrite
+            assert dim.size == dst_ds.dimensions[dim_name].size
+
+    def _copy_variable(var_name):
         assert var_name in src_ds.variables
         var = src_ds.variables[var_name]
         if var_name not in dst_ds.variables:
@@ -31,56 +41,17 @@ class NCCopyMixin(object):
             # netcdf library doesn't implement deleting variables, so no overwrite
             assert var.shape == dst_ds.variables[var_name].shape
 
-    @staticmethod
-    def copy_dimension(dim_name, src_ds, dst_ds):
-        assert dim_name in src_ds.dimensions
-        dim = src_ds.dimensions[dim_name]
-        if dim_name not in dst_ds.dimensions:
-            dst_ds.createDimension(
-                dim_name, (dim.size if not dim.isunlimited() else None)
-            )
-        else:
-            # netcdf library doesn't implement deleting dimensions, so no overwrite
-            assert dim.size == dst_ds.dimensions[dim_name].size
-
-    @staticmethod
-    def copy_axes(src_ds, dst_ds, bounds=True):
-        for dim_name in src_ds.dimensions:
-            NCCopyMixin.copy_dimension(dim_name, src_ds, dst_ds)
-            if dim_name in src_ds.variables:
-                NCCopyMixin.copy_variable(dim_name, src_ds, dst_ds)
-
-        if not bounds:
-            return
-        bounds_vars = [v for v in src_ds.variables if v.lower().endswith('_bnds')]
-        for var_name in bounds_vars:
-            NCCopyMixin.copy_variable(var_name, src_ds, dst_ds)
-
-    @staticmethod
-    def copy_dataset(src_ds, dst_ds,
-        copy_attrs=True, dimensions=None, variables=None, exclude_variables=None):
-        def _coerce_to_iter(x):
-            return (x if isinstance(x, collections.Iterable) else [x])
-
-        if dimensions is None:
-            dimensions = src_ds.dimensions
-        else:
-            dimensions = _coerce_to_iter(dimensions)
-        if variables is None:
-            variables = src_ds.variables
-        else:
-            variables = _coerce_to_iter(variables)
-        if exclude_variables is not None:
-            exclude_variables = set(_coerce_to_iter(exclude_variables))
-            variables = set(variables).difference(exclude_variables)
-
-        # copy global attributes all at once via dictionary
-        if copy_attrs:
-            dst_ds.setncatts(src_ds.__dict__)
-        for name in dimensions:
-            NCCopyMixin.copy_dimension(name, src_ds, dst_ds)
-        for name in variables:
-            NCCopyMixin.copy_variable(name, src_ds, dst_ds)
+    _copy_dimension(ax_name)
+    if ax_name in src_ds.variables:
+        _copy_variable(ax_name)
+    if bounds:
+        ax_bnds_name = ax_name+'_bnds'
+        if ax_bnds_name in src_ds.variables:
+            _copy_variable(ax_bnds_name)
+            for dim in src_ds.variables[ax_bnds_name].dimensions:
+                _copy_dimension(dim)
+                if dim in src_ds.variables:
+                    _copy_variable(dim)
 
 
 class NCCommonAxis(object):
