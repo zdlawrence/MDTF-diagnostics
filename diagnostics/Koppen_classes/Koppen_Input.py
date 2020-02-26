@@ -167,7 +167,7 @@ def prep_taslut(ds, file_var_name):
 def prep_pr(ds, file_var_name):
     var = ds.variables[file_var_name]
     
-    # units
+    # TODO: units
     
     var = np.ma.masked_invalid(var)
     var = np.ma.masked_less(var, 0.0)
@@ -175,21 +175,23 @@ def prep_pr(ds, file_var_name):
 
 def run_koppen(foo):
     tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', "r", keepweakref=True)
-    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', "r", keepweakref=True)
     landmask_ds = XXX
+    tas = prep_taslut(tas_ds, 'tas_var')
+    tas_clim = clim.Climatology(tas, XXX, date_range)
+    tas_ds.close()
+
+    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', "r", keepweakref=True)
+    pr = prep_pr(pr_ds, 'pr_var')
+    pr_clim = clim.Climatology(pr, XXX, date_range)
+    pr_ds.close()
+
 
     ds = NCCommonAxis(tas_var=tas_ds, pr_var=pr_ds)
 
     clim = Climatology(var_names, date_ranges, common_axes, dtype=dtype, 
         do_monthly=True, do_annual=True)
 
-    tas = prep_taslut(tas_ds, 'tas_var')
-    clim.make_climatologies(tas)
-    tas_ds.close()
 
-    pr = prep_pr(pr_ds, 'pr_var')
-    clim.make_climatologies(pr)
-    pr_ds.close()
 
 
 

@@ -24,6 +24,86 @@ class Match(Enum):
     Desert = 15
 
 
+KoppenInfoIndex = Enum('KoppenInfoIndex',
+[
+    'MAP',     # mean annual precip
+    'MAT',     # mean annual temp
+    'T_hot',   # temp of hottest month
+    'T_cold',  # temp of coldest month
+    'T_mon10', # no. of months with temp > 10 C
+    'P_dry',   # precip of driest month
+    'P_ASdry', # precip of driest month Apr-Sep
+    'P_OMdry', # precip of driest month Oct-Mar
+    'P_ASwet', # precip of wettest month Apr-Sep
+    'P_OMwet', # precip of wettest month Oct-Mar
+], start=0
+)
+
+KoppenClass = Enum('KoppenClass',
+[
+    "Af",
+    "Am",
+    "Aw",
+    "BWh",
+    "BWk",
+    "BSh",
+    "BSk",
+    "Csa",
+    "Csb",
+    "Csc",
+    "Cwa",
+    "Cwb",
+    "Cwc",
+    "Cfa",
+    "Cfb",
+    "Cfc",
+    "Dsa",
+    "Dsb",
+    "Dsc",
+    "Dsd",
+    "Dwa",
+    "Dwb",
+    "Dwc",
+    "Dwd",
+    "Dfa",
+    "Dfb",
+    "Dfc",
+    "Dfd",
+    "ET",
+    "EF"
+], start=0
+)
+
+def pack_koppen_info(tas, pr):
+    I = KoppenInfoIndex
+    dims = tuple([len(list(I))] + list(tas.annual.shape))
+    dtype = np.find_common_type([tas.dtype, pr.dtype], [])
+    month_axis = 0
+    apr_sep_mask = [True if (m >= 4 and m <= 9) else False for m in range(1,13)]
+    oct_mar_mask = [not m for m in apr_sep_mask]
+    packed = np.ma.masked_all(dims, dtype=dtype)
+
+    packed[I.MAP.value,     :,:] = pr.annual
+    packed[I.MAT.value,     :,:] = tas.annual
+    packed[I.T_hot.value,   :,:] = np.amax(tas.monthly, axis=month_axis)
+    packed[I.T_cold.value,  :,:] = np.amin(tas.monthly, axis=month_axis)
+    packed[I.T_mon10.value, :,:] = np.asarray(tas.monthly > 10.0).count_nonzero(axis=month_axis)
+    packed[I.P_dry.value,   :,:] = np.amin(pr.monthly, axis=month_axis)
+    packed[I.P_ASdry.value, :,:] = np.amin(pr.monthly, axis=month_axis, where=apr_sep_mask)
+    packed[I.P_OMdry.value, :,:] = np.amin(pr.monthly, axis=month_axis, where=oct_mar_mask)
+    packed[I.P_ASwet.value, :,:] = np.amax(pr.monthly, axis=month_axis, where=apr_sep_mask)
+    packed[I.P_OMwet.value, :,:] = np.amax(pr.monthly, axis=month_axis, where=oct_mar_mask)
+
+    
+
+def koppen(info, ):
+    I = KoppenInfoIndex
+    P_sdry = 
+    P_wdry = 
+    P_swet = 
+    P_wwet = 
+    P_threshold = 
+
 class Koppen(object):
     def __init__(self, daysInFebruary):
         self.daysInMonths = np.array([31.0, daysInFebruary, 31.0, 30.0, 31.0, 30.0,
@@ -137,34 +217,3 @@ class Koppen(object):
                  Match.Continental : self.matchContinental,
                  Match.Polar : self.matchPolar}
         return funcs[self.major(clim)](clim)
-        
-                
-    
-    
-                 
-        
-    
-                
-            
-            
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-      
-        
-            
-        
-        
-    
-    
-        
-        
