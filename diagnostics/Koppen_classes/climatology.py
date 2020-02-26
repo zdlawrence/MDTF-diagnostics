@@ -175,7 +175,19 @@ class Climatology(object):
             )
         return ans
 
-    def get_seasonal(self, var, month_labels):
+    def get_season(self, var, months_in_season):
+        """Given same NetCDF4 Variable used to initialize object and a list of
+        months in the season, return average for the season over entire 
+        analysis period.
+        """
+        vv = var[self.var_slices]
+        mask = [(m in months_in_season) for m in self.months]
+        new_wts = np.where(mask, self.day_weights, 0.0)
+        return np.ma.average(
+            vv, axis=self.t_axis_pos, weights=new_wts
+        )
+
+    def get_seasons(self, var, month_labels):
         """Given same NetCDF4 Variable used to initialize object and a list of
         lists defining seasons, return average for each season over entire 
         analysis period.
@@ -185,18 +197,13 @@ class Climatology(object):
         ans[0, :,:,...] will be the DJF average and ans[1, :,:,...] will be the
         JJA average.
         """
-        vv = var[self.var_slices]
         dims = tuple([len(month_labels)] + self.latlon_dims)
         ans_slice = [slice(None)] * len(dims)
         ans = np.ma.masked_all(dims, dtype=self.dtype)
         # Small number of seasons, so no need to optimize this loop
         for idx, label in enumerate(month_labels):
-            mask = [(m in label) for m in self.months]
-            new_wts = np.where(mask, self.day_weights, 0.0)
             ans_slice[0] = slice(idx)
-            ans[tuple(ans_slice)] = np.ma.average(
-                vv, axis=self.t_axis_pos, weights=new_wts
-            )
+            ans[tuple(ans_slice)] = self.get_season(var, label)
         return ans
 
     def get_mean(self, var):
