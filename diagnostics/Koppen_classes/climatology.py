@@ -1,11 +1,11 @@
-import os
 import collections
 import datetime
+import math
 import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var, time_var, date_range, do_monthly=True, do_annual=True):
+    def __init__(self, var, time_var, date_range):
         """Compute monthly and annual climatologies for a single variable.
 
         Args:
@@ -17,71 +17,59 @@ class Climatology(object):
             do_monthly: True to compute monthly climatologies.
             do_annual: True to compute annual climatologies.
         """
-        assert date_range[1] >= date_range[0]
-        self.start_yr = date_range[0]
-        self.end_yr = date_range[1]
+        # parse time axis info
+        self.t_units = time_var.units
+        self.calendar = time_var.calendar.lower().replace(' ', '_')
+        avg_timestep = np.average(np.diff(time_var))
+        if avg_timestep < 8.0:
+            do_day_weights = False # sub-monthly
+        elif avg_timestep < 32.0:
+            do_day_weights = True # monthly frequency
+        else:
+            raise ValueError('Data needs to be monthly or greater frequency.')
+        self._half_step = datetime.timedelta(days=math.ceil(avg_timestep / 2.0))
+
         self.dtype = var.dtype
+        self.start_dt, self.end_dt = self._parse_input_dates(date_range)
         try:
-            t_start, t_end = self.get_year_inds(time_var)
-            t_slice = slice(t_start, t_end)
-            day_wts = self.day_weights(time_var)
-        except Exception as exc:
-            print('Error in parsing time axis for {}:'.format(var.name))
-            print(exc)
-            raise exc
-        try:
-            t_axis_pos = var.dimensions.index(time_var.name)
-            assert t_axis_pos
+            self.t_axis_pos = var.dimensions.index(time_var.name)
+            assert self.t_axis_pos
+            self.latlon_dims = list(var.shape)
+            del self.latlon_dims[self.t_axis_pos]
         except AssertionError:
             print('Error in dimensions of {}:'.format(var.name))
             print('{}: {} -> {}'.format(var.name, var.dimensions, var.shape))
             raise
+        try:
+            n_dims = len(var.shape)
+            t_slice = self.get_timeslice(time_var)
+            self.var_slices = [slice(None)] * n_dims # no way to do this with np.take??
+            self.var_slices[self.t_axis_pos] = t_slice
+            # don't store refs to var itself in object, to allow GC
+        except (AssertionError, ValueError) as exc:
+            print('Error in parsing time axis for {}:'.format(var.name))
+            print(exc)
+            raise exc
 
-        if do_monthly:
-            self.monthly = np.apply_along_axis(
-                self.monthly_climatology, t_axis_pos, var, day_wts, t_slice
+        dts = [self.num2date(t) for t in time_var[t_slice]]
+        self.months = [dts.month for dt in dts]
+        if do_day_weights:
+            yr_mons = [(dt.year, dt.month) for dt in dts]
+            self.day_weights = np.array([
+                    self.days_per_month(*ym, self.calendar) for ym in yr_mons
+                ], dtype=self.dtype
             )
         else:
-            self.monthly = None
+            self.day_weights = None
 
-        if do_annual:
-            day_wts = day_wts.flatten(order='C')
-            self.annual = np.apply_along_axis(
-                self.annual_climatology, t_axis_pos, var, day_wts, t_slice
-            )
-        else:
-            self.annual = None
+    def num2date(self, num):
+        return nc.num2date(num, self.t_units, calendar=self.calendar)
 
-    def get_year_inds(self, time_var):
-        """Find indices in a netcdf date axis (of form "days since <ref date>")
-        corresponding to start and end (inclusive) of a range of years.
-        """
-        units = time_var.units
-        calendar = time_var.calendar.lower()
-        expected_len = 12 * (self.end_yr - self.start_yr + 1)
-        # search instead of index math just to be sure
-        dt = datetime.datetime(self.start_yr, 1, 1, 0, 0, 0)
-        nc_num = nc.date2num(dt, units, calendar=calendar)
-        i_start = np.searchsorted(time_var, nc_num, side='left')
-        
-        dt = datetime.datetime(self.end_yr, 12, 31, 0, 0, 0)
-        nc_num = nc.date2num(dt, units, calendar=calendar)
-        i_end = np.searchsorted(time_var, nc_num, side='right')
-        
-        if len(time_var[i_start:i_end]) < expected_len:
-            start_dt = nc.num2date(time_var[0], units, calendar=calendar)
-            end_dt = nc.num2date(time_var[-1], units, calendar=calendar)
-            raise ValueError(("File time axis ({}-{}) doesn't cover requested "
-                "date range ({}-{})").format(start_dt, end_dt, self.start_yr, self.end_yr))
-        elif len(time_var[i_start:i_end]) > expected_len:
-            raise ValueError("File time axis not at monthly frequency.")
-        return (i_start, i_end)
+    def date2num(self, dt):
+        return nc.date2num(dt, self.t_units, calendar=self.calendar)
 
-    def day_weights(self, time_var):
-        """Given an (inclusive) range of years, output a numpy array of days per 
-        month, handling all calendars recognized by CF conventions.
-        Dimensions are (# of years x 12).
-        """
+    @staticmethod
+    def days_per_month(year, month, calendar):
         # http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#calendar
         def _is_leap(year, calendar):
             if calendar in ('noleap', 'no_leap', '365day', '365_day'):
@@ -90,7 +78,7 @@ class Climatology(object):
                 return True
 
             is_julian_leap = (year % 4 == 0)
-            if calendar == 'julian':
+            if calendar in ('julian', 'proleptic_julian', 'prolepticjulian'):
                 return is_julian_leap
             is_gregorian_leap = (year % 4 == 0 and year % 100 != 0) \
                 or (year % 400 == 0)
@@ -106,23 +94,67 @@ class Climatology(object):
                     "Unsupported calendar '{}'".format(calendar)
                 )
         
-        def _do_one_year(year, calendar):
-            if calendar in ('360day', '360_day'):
-                return [30] * 12
+        assert month > 0 and month <= 12
+        if calendar in ('360day', '360_day'):
+            return 30
+        if month == 2:
             if _is_leap(year, calendar):
-                feb_days = 29
+                return 29
             else:
-                feb_days = 28
-            return [31, feb_days, 31, 30, 31, 30,
-                    31,       31, 30, 31, 30, 31]
-        
-        cal = time_var.calendar.lower()
-        return np.array(
-            [_do_one_year(yr, cal) for yr in range(self.start_yr, self.end_yr + 1)],
-            dtype=self.dtype
+                return 28
+        elif month in (1, 3, 5, 7, 8, 10, 12):
+            return 31
+        else:
+            return 30
+
+    def _parse_input_dates(self, date_range):
+        def _parse_date(dt):
+            if hasattr(dt, 'year'):
+                yr = dt.year
+            else:
+                yr = int(dt)
+            if hasattr(dt, 'month'):
+                mon = dt.month
+            else:
+                mon = None
+            return (yr, mon)
+
+        assert date_range[1] >= date_range[0]
+        (start_yr, start_mon) = _parse_date(date_range[0])
+        if not start_mon:
+            start_mon = 1
+        (end_yr, end_mon) = _parse_date(date_range[1])
+        if not end_mon:
+            end_mon = 12
+        end_day = self.days_per_month(end_yr, end_mon, self.calendar)
+        return (
+            datetime.datetime(start_yr, start_mon,       1, 0, 0, 0),
+            datetime.datetime(  end_yr,   end_mon, end_day, 0, 0, 0)
         )
 
-    def monthly_climatology(self, x, days_per_month, slice=None):
+    def get_timeslice(self, time_var):
+        """Find indices in a netcdf date axis (of form "days since <ref date>")
+        corresponding to start and end (inclusive) of a range of years.
+        """
+        try:
+            range_start_n2 = self.date2num(self.start_dt + self._half_step)
+            assert range_start_n2 > time_var[0] # bounds check; caught below
+            range_start_n = self.date2num(self.start_dt)
+            i_start = np.searchsorted(time_var, range_start_n, side='left')
+
+            range_end_n2 = self.date2num(self.end_dt - self._half_step)
+            assert range_end_n2 < time_var[-1] # bounds check; caught below
+            range_end_n = self.date2num(self.end_dt)
+            i_end = np.searchsorted(time_var, range_end_n, side='right')
+        except AssertionError:
+            raise ValueError(("Variable time axis ({}-{}) doesn't cover requested "
+                "date range ({}-{}).").format(
+                    self.num2date(time_var[0]), self.num2date(time_var[-1]),
+                    self.start_dt, self.end_dt
+            ))
+        return slice(i_start, i_end)
+
+    def get_subannual(self, var, month_labels):
         """Given 1D monthly timeseries x and 2D array of days per month returned
         by day_weights(), return 1D vector of monthly averages for years in input 
         specified by indices, or all years if these aren't specified.
@@ -131,14 +163,21 @@ class Climatology(object):
         (= averages for respective months). Output[0] will be average of x over
         {Jan '00, Jan '01, Jan '02}, etc.
         """
-        xx = x.view()
-        if slice is not None:
-            xx = xx[slice]
-        # shape of -1 means "as many rows as needed"
-        x_by_month = xx.reshape((-1, 12), order='C')
-        return np.ma.average(x_by_month, weights=days_per_month, axis=0)
+        def get_subannual_t_axis(t_series, day_wts, arr_mask):
+            return np.ma.average(t_series[arr_mask], weights=day_wts[arr_mask])
 
-    def annual_climatology(self, x, days_per_month, slice=None):
+        assert len(month_labels) == 12
+        unique_labels = sorted(set(month_labels))
+        vv = var[self.var_slices] # should only be a view, not a copy
+        dims = tuple([len(unique_labels)] + self.latlon_dims)
+        ans = np.ma.masked_all(dims, dtype=self.dtype)
+        for idx, label in enumerate(unique_labels):
+            arr_mask = np.asarray(self.months == label)
+            ans[idx, :,:,:] = np.apply_along_axis(
+                get_subannual_t_axis, self.t_axis_pos, vv, self.day_weights, arr_mask
+            )
+
+    def get_annual(self, var):
         """Given 1D monthly timeseries x and 1D array of days per month returned 
         by flattening day_weights(), return annual average for years in input 
         specified by indices, or all years if these aren't specified.
@@ -147,7 +186,10 @@ class Climatology(object):
         (= averages for respective months). Output will be average of x over
         entire period.
         """
-        xx = x.view()
-        if slice is not None:
-            xx = xx[slice]
-        return np.ma.average(xx, weights=days_per_month)
+        def get_annual_t_axis(t_series, day_wts):
+            return np.ma.average(t_series, weights=day_wts)
+
+        vv = var[self.var_slices] # should only be a view, not a copy
+        return np.apply_along_axis(
+            get_annual_t_axis, self.t_axis_pos, vv, self.day_weights
+        )
