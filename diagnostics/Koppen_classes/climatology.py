@@ -33,13 +33,13 @@ class Climatology(object):
         self.start_dt, self.end_dt = self._parse_input_dates(date_range)
         try:
             self.t_axis_pos = var.dimensions.index(time_var.name)
-            assert self.t_axis_pos
             self.latlon_dims = list(var.shape)
             del self.latlon_dims[self.t_axis_pos]
-        except AssertionError:
+        except (AssertionError, ValueError) as exc:
             print('Error in dimensions of {}:'.format(var.name))
             print('{}: {} -> {}'.format(var.name, var.dimensions, var.shape))
-            raise
+            print(exc)
+            raise exc
         try:
             n_dims = len(var.shape)
             t_slice = self.get_timeslice(time_var)
@@ -52,7 +52,7 @@ class Climatology(object):
             raise exc
 
         dts = [self.num2date(t) for t in time_var[t_slice]]
-        self.months = [dts.month for dt in dts]
+        self.months = [dt.month for dt in dts]
         if do_day_weights:
             yr_mons = [(dt.year, dt.month) for dt in dts]
             self.day_weights = np.array([
