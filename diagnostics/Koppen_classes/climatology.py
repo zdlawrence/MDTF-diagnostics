@@ -29,8 +29,9 @@ class Climatology(object):
             raise ValueError('Data needs to be monthly or greater frequency.')
         self._half_step = datetime.timedelta(days=math.ceil(avg_timestep / 2.0))
 
+        # don't store refs to var itself in object, to allow GC
         self.dtype = var.dtype
-        self.start_dt, self.end_dt = self._parse_input_dates(date_range)
+        self.var_slice = [slice(None)] * len(var.shape)
         try:
             self.t_axis_pos = var.dimensions.index(time_var.name)
             self.latlon_dims = list(var.shape)
@@ -41,17 +42,13 @@ class Climatology(object):
             print(exc)
             raise exc
         try:
-            n_dims = len(var.shape)
-            t_slice = self.get_timeslice(time_var)
-            self.var_slices = [slice(None)] * n_dims # no way to do this with np.take??
-            self.var_slices[self.t_axis_pos] = t_slice
-            # don't store refs to var itself in object, to allow GC
+            self.start_inds, self.end_inds = self.get_date_range_indices(date_range, time_var)
         except (AssertionError, ValueError) as exc:
             print('Error in parsing time axis for {}:'.format(var.name))
             print(exc)
             raise exc
 
-        dts = [self.num2date(t) for t in time_var[t_slice]]
+        dts = [self.num2date(t) for t in time_var]
         self.months = np.array([dt.month for dt in dts], dtype=np.int8)
         if do_day_weights:
             yr_mons = [(dt.year, dt.month) for dt in dts]
@@ -98,63 +95,62 @@ class Climatology(object):
         if calendar in ('360day', '360_day'):
             return 30
         if month == 2:
-            if _is_leap(year, calendar):
-                return 29
-            else:
-                return 28
+            return (29 if _is_leap(year, calendar) else 28)
         elif month in (1, 3, 5, 7, 8, 10, 12):
             return 31
         else:
             return 30
 
-    def _parse_input_dates(self, date_range):
-        def _parse_date(dt):
-            if hasattr(dt, 'year'):
-                yr = dt.year
-            else:
-                yr = int(dt)
-            if hasattr(dt, 'month'):
-                mon = dt.month
-            else:
-                mon = None
+    def get_date_range_indices(self, date_range, time_var):
+        def _parse_date(dt, default_month):
+            yr = (dt.year if hasattr(dt, 'year') else int(dt))
+            mon = (dt.month if hasattr(dt, 'month') else default_month)
             return (yr, mon)
 
+        def _increment_month(yr, mon, delta_months):
+            ym = (12* yr + mon - 1)
+            y, m = divmod(ym + delta_months, 12)
+            return (y, m+1)
+
         assert date_range[1] >= date_range[0]
-        (start_yr, start_mon) = _parse_date(date_range[0])
-        if not start_mon:
-            start_mon = 1
-        (end_yr, end_mon) = _parse_date(date_range[1])
-        if not end_mon:
-            end_mon = 12
-        end_day = self.days_per_month(end_yr, end_mon, self.calendar)
+        (start_yr, start_mon) = _parse_date(date_range[0], 1)
+        (end_yr, end_mon) = _parse_date(date_range[1], 12)
+
+        start_yms = [_increment_month(start_yr, start_mon, t) for t in range(12)]
+        end_yms = [_increment_month(end_yr, end_mon, -t) for t in range(12)]
         return (
-            datetime.datetime(start_yr, start_mon,       1, 0, 0, 0),
-            datetime.datetime(  end_yr,   end_mon, end_day, 0, 0, 0)
+            [self.get_start_index(time_var, *ym) for ym in start_yms]
+            [self.get_end_index(time_var, *ym) for ym in end_yms]
         )
 
-    def get_timeslice(self, time_var):
-        """Find indices in a netcdf date axis (of form "days since <ref date>")
-        corresponding to start and end (inclusive) of a range of years.
-        """
-        try:
-            range_start_n2 = self.date2num(self.start_dt + self._half_step)
-            assert range_start_n2 > time_var[0] # bounds check; caught below
-            range_start_n = self.date2num(self.start_dt)
-            i_start = np.searchsorted(time_var, range_start_n, side='left')
-
-            range_end_n2 = self.date2num(self.end_dt - self._half_step)
-            assert range_end_n2 < time_var[-1] # bounds check; caught below
-            range_end_n = self.date2num(self.end_dt)
-            i_end = np.searchsorted(time_var, range_end_n, side='right')
-        except AssertionError:
-            raise ValueError(("Variable time axis ({}-{}) doesn't cover requested "
-                "date range ({}-{}).").format(
+    def get_start_index(self, time_var, start_yr, start_mon):
+        start_dt = datetime.datetime(start_yr, start_mon, 1, 0, 0, 0)
+        if time_var[0] > self.date2num(start_dt + self._half_step):
+            raise ValueError(("Variable time axis ({}-{}) starts after requested "
+                "date range start ({}).").format(
                     self.num2date(time_var[0]), self.num2date(time_var[-1]),
-                    self.start_dt, self.end_dt
+                    start_dt
             ))
-        return slice(i_start, i_end)
+        return np.searchsorted(time_var, self.date2num(start_dt), side='left')
+
+    def get_end_index(self, time_var, end_yr, end_mon):
+        end_day = self.days_per_month(end_yr, end_mon, self.calendar)
+        end_dt = datetime.datetime(end_yr, end_mon, end_day, 23, 59, 59)
+        if time_var[-1] < self.date2num(end_dt - self._half_step):
+            raise ValueError(("Variable time axis ({}-{}) ends before requested "
+                "date range end ({}).").format(
+                    self.num2date(time_var[0]), self.num2date(time_var[-1]),
+                    end_dt
+            ))
+        return np.searchsorted(time_var, self.date2num(end_dt), side='right')
 
     # ---------------------------------------------------
+
+    def in_month_interval(m, m_start, m_end):
+        if m_start < m_end:
+            return (m_start <= m) and (m <= m_end)
+        else: # eg DJF has m_start = 12, m_end = 2
+            return (m_start <= m) or (m <= m_end)
 
     def _calc_mean_or_total(self, var, weights, do_total=False):
         """Given same NetCDF4 Variable used to initialize object, compute 
