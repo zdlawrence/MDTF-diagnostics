@@ -154,40 +154,46 @@ class Climatology(object):
             ))
         return slice(i_start, i_end)
 
-    def get_monthly(self, var):
-        """Given same NetCDF4 Variable used to initialize object, return average
-        for each month over entire analysis period.
-        
-        If var has dimensions (t x n_lat x n_lon), returned array will have
-        dimensions (12 x n_lat x n_lon), regardless of which axis is the time
-        axis.
-        """
-        vv = var[self.var_slices]
-        dims = tuple([12] + self.latlon_dims)
-        ans_slice = [slice(None)] * len(dims)
-        ans = np.ma.masked_all(dims, dtype=self.dtype)
-        # Small number of months, so no need to optimize this loop
-        for m in range(1,13):
-            new_wts = np.where(self.months == m, self.day_weights, 0.0)
-            ans_slice[0] = slice(m)
-            ans[tuple(ans_slice)] = np.ma.average(
-                vv, axis=self.t_axis_pos, weights=new_wts
-            )
-        return ans
+    # ---------------------------------------------------
 
-    def get_season(self, var, months_in_season):
+    def _calc_mean_or_total(self, var, weights, do_total=False):
+        """Given same NetCDF4 Variable used to initialize object, compute 
+        weighted average or total over entire analysis period.
+        """ 
+        vv = var[self.var_slices]
+        if do_total:
+            # numpy doesn't have tensordot for masked arrays. Instead of doing
+            # bookkeeping for mask explicitly, just multiply average by sum of
+            # weights.
+            avg, weight_sum = np.ma.average(
+                vv, axis=self.t_axis_pos, weights=weights, returned=True
+            )
+            return avg * weight_sum
+        else:
+            # compute weighted mean
+            return np.ma.average(
+                vv, axis=self.t_axis_pos, weights=weights
+            )
+
+    def _calc_season(self, var, months_in_season, do_total=False):
         """Given same NetCDF4 Variable used to initialize object and a list of
         months in the season, return average for the season over entire 
         analysis period.
         """
-        vv = var[self.var_slices]
-        mask = [(m in months_in_season) for m in self.months]
-        new_wts = np.where(mask, self.day_weights, 0.0)
-        return np.ma.average(
-            vv, axis=self.t_axis_pos, weights=new_wts
-        )
+        # zero out weights for non-selected months
+        if isinstance(months_in_season, collections.Iterable) \
+            and len(months_in_season) == 1:
+            months_in_season = months_in_season[0]
+        if not isinstance(months_in_season, collections.Iterable):
+            # single month case: can broadcast __eq__ but not __contains__
+            new_wts = np.where(self.months == months_in_season, self.day_weights, 0.0)
+        else:
+            # multiple months
+            mask = [(m in months_in_season) for m in self.months]
+            new_wts = np.where(mask, self.day_weights, 0.0)
+        return self._calc_mean_or_total(var, new_wts, do_total=do_total)
 
-    def get_seasons(self, var, month_labels):
+    def _calc_seasons(self, var, month_labels, do_total=False):
         """Given same NetCDF4 Variable used to initialize object and a list of
         lists defining seasons, return average for each season over entire 
         analysis period.
@@ -203,18 +209,21 @@ class Climatology(object):
         # Small number of seasons, so no need to optimize this loop
         for idx, label in enumerate(month_labels):
             ans_slice[0] = slice(idx)
-            ans[tuple(ans_slice)] = self.get_season(var, label)
+            ans[tuple(ans_slice)] = self._calc_season(var, label, do_total=do_total)
         return ans
 
-    def get_mean(self, var):
-        """Given same NetCDF4 Variable used to initialize object, return average
-        over entire analysis period.
-        
-        If var has dimensions (t x n_lat x n_lon), returned array will have
-        dimensions (n_lat x n_lon) (true regardless of which axis is the time
-        axis).
-        """
-        vv = var[self.var_slices] # should only be a view, not a copy
-        return np.ma.average(
-            vv, axis=self.t_axis_pos, weights=self.day_weights
-        )
+    def monthly_means(self, var):
+        """Mean of var for each month, averaged over all years in period. """
+        return self._calc_seasons(var, list(range(1,13)), do_total=False)
+
+    def monthly_totals(self, var):
+        """Total of var for each month, averaged over all years in period. """
+        return self._calc_seasons(var, list(range(1,13)), do_total=True)
+
+    def mean(self, var):
+        """Mean of var over entire analysis period. """
+        return self._calc_mean_or_total(var, self.day_weights, do_total=False)
+
+    def total(self, var):
+        """Total of var over entire analysis period. """
+        return self._calc_mean_or_total(var, self.day_weights, do_total=True)
