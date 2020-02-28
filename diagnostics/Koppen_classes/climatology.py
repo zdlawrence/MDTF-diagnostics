@@ -5,7 +5,7 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var, time_var, date_range):
+    def __init__(self, var, time_var, date_range, truncate=False):
         """Compute monthly and annual climatologies for a single variable.
 
         Args:
@@ -14,8 +14,6 @@ class Climatology(object):
                 `var`.
             date_range: Two-element list of [start year, end year]. Intervals 
                 are inclusive.
-            do_monthly: True to compute monthly climatologies.
-            do_annual: True to compute annual climatologies.
         """
         # parse time axis info
         self.t_units = time_var.units
@@ -30,8 +28,9 @@ class Climatology(object):
         self._half_step = datetime.timedelta(days=math.ceil(avg_timestep / 2.0))
 
         # don't store refs to var itself in object, to allow GC
+        self.truncate = truncate
         self.dtype = var.dtype
-        self.var_slice = [slice(None)] * len(var.shape)
+        self.var_dim = len(var.shape)
         try:
             self.t_axis_pos = var.dimensions.index(time_var.name)
             self.latlon_dims = list(var.shape)
@@ -42,7 +41,11 @@ class Climatology(object):
             print(exc)
             raise exc
         try:
-            self.start_inds, self.end_inds = self.get_date_range_indices(date_range, time_var)
+            self.start_ym, self.end_ym, self.trailing_ym = \
+                self.get_date_range_ym(time_var, *date_range)
+            self.start_y, self.start_m = self._from_ym(self.start_ym)
+            self.end_y, self.end_m = self._from_ym(self.end_ym)
+            self.lookup = self.get_date_range_indices(time_var)
         except (AssertionError, ValueError) as exc:
             print('Error in parsing time axis for {}:'.format(var.name))
             print(exc)
@@ -64,6 +67,17 @@ class Climatology(object):
 
     def date2num(self, dt):
         return nc.date2num(dt, self.t_units, calendar=self.calendar)
+
+    @staticmethod
+    def _to_ym(y, m):
+        # combine year & month to monotonic count of months, simplifies math
+        return 12 * y + m - 1
+
+    @staticmethod
+    def _from_ym(ym):
+        # inverse of _to_ym
+        y, m = divmod(ym, 12)
+        return (y, m+1)
 
     @staticmethod
     def days_per_month(year, month, calendar):
@@ -101,101 +115,127 @@ class Climatology(object):
         else:
             return 30
 
-    def get_date_range_indices(self, date_range, time_var):
+    def get_date_range_ym(self, time_var, range_start, range_end):
         def _parse_date(dt, default_month):
-            yr = (dt.year if hasattr(dt, 'year') else int(dt))
-            mon = (dt.month if hasattr(dt, 'month') else default_month)
-            return (yr, mon)
+            y = (dt.year if hasattr(dt, 'year') else int(dt))
+            m = (dt.month if hasattr(dt, 'month') else default_month)
+            return self._to_ym(y, m)
 
-        def _increment_month(yr, mon, delta_months):
-            ym = (12* yr + mon - 1)
-            y, m = divmod(ym + delta_months, 12)
-            return (y, m+1)
+        assert range_start <= range_end
+        r_start_ym = _parse_date(range_start, 1)
+        r_end_ym = _parse_date(range_end, 12)
 
-        assert date_range[1] >= date_range[0]
-        (start_yr, start_mon) = _parse_date(date_range[0], 1)
-        (end_yr, end_mon) = _parse_date(date_range[1], 12)
-
-        start_yms = [_increment_month(start_yr, start_mon, t) for t in range(12)]
-        end_yms = [_increment_month(end_yr, end_mon, -t) for t in range(12)]
-        return (
-            [self.get_start_index(time_var, *ym) for ym in start_yms]
-            [self.get_end_index(time_var, *ym) for ym in end_yms]
-        )
+        f_start_dt = self.num2date(time_var[0])
+        f_end_dt = self.num2date(time_var[-1])
+        f_start_ym = _parse_date(f_start_dt, 1)
+        f_end_ym = _parse_date(f_end_dt, 12)
+        if f_start_ym > r_start_ym:
+            raise ValueError(("Variable time axis ({}-{}) starts after requested "
+                "date range start {}.").format(f_start_dt, f_end_dt, self._from_ym(r_start_ym))
+            )
+        if f_end_ym < r_end_ym:
+            raise ValueError(("Variable time axis ({}-{}) ends before requested "
+                "date range end {}.").format(f_start_dt, f_end_dt, self._from_ym(r_end_ym))
+            )
+        return r_start_ym, r_end_ym, min(f_end_ym, r_end_ym+12)
 
     def get_start_index(self, time_var, start_yr, start_mon):
         start_dt = datetime.datetime(start_yr, start_mon, 1, 0, 0, 0)
-        if time_var[0] > self.date2num(start_dt + self._half_step):
-            raise ValueError(("Variable time axis ({}-{}) starts after requested "
-                "date range start ({}).").format(
-                    self.num2date(time_var[0]), self.num2date(time_var[-1]),
-                    start_dt
-            ))
         return np.searchsorted(time_var, self.date2num(start_dt), side='left')
 
     def get_end_index(self, time_var, end_yr, end_mon):
         end_day = self.days_per_month(end_yr, end_mon, self.calendar)
         end_dt = datetime.datetime(end_yr, end_mon, end_day, 23, 59, 59)
-        if time_var[-1] < self.date2num(end_dt - self._half_step):
-            raise ValueError(("Variable time axis ({}-{}) ends before requested "
-                "date range end ({}).").format(
-                    self.num2date(time_var[0]), self.num2date(time_var[-1]),
-                    end_dt
-            ))
         return np.searchsorted(time_var, self.date2num(end_dt), side='right')
+
+    def get_date_range_indices(self, time_var):
+        lookup = np.zeros((self.trailing_ym - self.start_ym + 1, 2), dtype=np.intp)
+        for ym in range(self.start_ym, self.trailing_ym):
+            y, m = self._from_ym(ym)
+            i = ym - self.start_ym
+            lookup[i,0] = self.get_start_index(time_var, y, m)
+            lookup[i,1] = self.get_end_index(time_var, y, m)
+        return lookup
 
     # ---------------------------------------------------
 
-    def in_month_interval(m, m_start, m_end):
-        if m_start < m_end:
-            return (m_start <= m) and (m <= m_end)
-        else: # eg DJF has m_start = 12, m_end = 2
-            return (m_start <= m) or (m <= m_end)
+    def _calc_season(self, var, season_start, duration, do_total=False):
+        """Given same NetCDF4 Variable used to initialize object and a list of
+        months in the season, return average of (average/total for the season) 
+        over entire analysis period.
+        """
+        start_yms = [self._to_ym(y, season_start) \
+            for y in range(self.start_y, self.end_y + 1)]
+        end_yms = [ym + duration for ym in start_yms]
 
-    def _calc_mean_or_total(self, var, weights, do_total=False):
-        """Given same NetCDF4 Variable used to initialize object, compute 
-        weighted average or total over entire analysis period.
-        """ 
-        vv = var[self.var_slices]
+        if end_yms[0] < self.start_ym:
+            # first season outside date range; start following year instead
+            del start_yms[0]
+            del end_yms[0]
+        elif start_yms[0] < self.start_ym and self.start_ym < end_yms[0]:
+            # start of date range is in middle of first season
+            if self.truncate and not do_total:
+                # truncate season to start of range
+                start_yms[0] = self.start_ym
+            else:
+                # start following year
+                del start_yms[0]
+                del end_yms[0]
+        else:
+            pass # normal case, season starts after range
+
+        if end_yms[-1] < self.end_ym:
+            pass # normal case, season ends before range
+        elif start_yms[-1] < self.end_ym and self.end_ym < end_yms[-1]:
+            # end of date range is in middle of last season
+            if self.truncate and not do_total:
+                # truncate season to end of range
+                end_yms[-1] = self.end_ym
+            else:
+                # stop previous year
+                del start_yms[-1]
+                del end_yms[-1]
+        else:
+            # date range ends before last season; stop with previous year's season
+            del start_yms[-1]
+            del end_yms[-1]
+
+        assert len(start_yms) == len(end_yms)
+        n_years = len(start_yms)
+        t_slices = [slice(
+                self.lookup[start_yms[i] - self.start_ym, 0],
+                self.lookup[end_yms[i] - self.start_ym, 1]
+            ) for i in range(n_years)]
+        ans_slice = [slice(None)] * self.var_dim
+        var_slice = [slice(None)] * self.var_dim
+        dims = tuple([n_years] + self.latlon_dims)
+        season_avgs = np.ma.zeros(dims, dtype=self.dtype)
+        season_wts = np.zeros(dims, dtype=self.dtype)
+
+        for i in range(n_years):
+            # average over one season. No easy way to do this with numpy as we 
+            # want to handle the case of daily data, where season lengths may 
+            # differ year to year.
+            ans_slice[0] = slice(i)
+            var_slice[self.t_axis_pos] = t_slices[i]
+            season_avgs[ans_slice], season_wts[ans_slice] = np.ma.average(
+                var[var_slice], weights=self.day_weights[t_slices[i]], 
+                axis=self.t_axis_pos, returned=True
+            )
         if do_total:
             # numpy doesn't have tensordot for masked arrays. Instead of doing
             # bookkeeping for mask explicitly, just multiply average by sum of
-            # weights.
-            avg, weight_sum = np.ma.average(
-                vv, axis=self.t_axis_pos, weights=weights, returned=True
-            )
-            return avg * weight_sum
-        else:
-            # compute weighted mean
-            return np.ma.average(
-                vv, axis=self.t_axis_pos, weights=weights
-            )
-
-    def _calc_season(self, var, months_in_season, do_total=False):
-        """Given same NetCDF4 Variable used to initialize object and a list of
-        months in the season, return average for the season over entire 
-        analysis period.
-        """
-        # zero out weights for non-selected months
-        if isinstance(months_in_season, collections.Iterable) \
-            and len(months_in_season) == 1:
-            months_in_season = months_in_season[0]
-        if not isinstance(months_in_season, collections.Iterable):
-            # single month case: can broadcast __eq__ but not __contains__
-            new_wts = np.where(self.months == months_in_season, self.day_weights, 0.0)
-        else:
-            # multiple months
-            mask = [(m in months_in_season) for m in self.months]
-            new_wts = np.where(mask, self.day_weights, 0.0)
-        return self._calc_mean_or_total(var, new_wts, do_total=do_total)
+            # weights to get total.
+            season_avgs *= season_wts
+        return np.ma.average(season_avgs, weights=season_wts, axis=0)
 
     def _calc_seasons(self, var, month_labels, do_total=False):
         """Given same NetCDF4 Variable used to initialize object and a list of
-        lists defining seasons, return average for each season over entire 
+        tuples defining seasons, return average for each season over entire 
         analysis period.
 
         The first axis of the answer will always correspond to the entries in
-        month_labels. For example, with month_labels = [(12,1,2), (6,7,8)],
+        month_labels. For example, with month_labels = [(12,2), (6,8)],
         ans[0, :,:,...] will be the DJF average and ans[1, :,:,...] will be the
         JJA average.
         """
@@ -205,21 +245,23 @@ class Climatology(object):
         # Small number of seasons, so no need to optimize this loop
         for idx, label in enumerate(month_labels):
             ans_slice[0] = slice(idx)
-            ans[tuple(ans_slice)] = self._calc_season(var, label, do_total=do_total)
+            duration = (label[1] - label[0]) % 12
+            ans[ans_slice] = \
+                self._calc_season(var, label[0], duration, do_total=do_total)
         return ans
 
-    def monthly_means(self, var):
+    def mean_monthly(self, var):
         """Mean of var for each month, averaged over all years in period. """
-        return self._calc_seasons(var, list(range(1,13)), do_total=False)
+        return self._calc_seasons(var, [(m,m) for m in range(1,13)], do_total=False)
 
-    def monthly_totals(self, var):
+    def total_monthly(self, var):
         """Total of var for each month, averaged over all years in period. """
-        return self._calc_seasons(var, list(range(1,13)), do_total=True)
+        return self._calc_seasons(var, [(m,m) for m in range(1,13)], do_total=True)
 
-    def mean(self, var):
-        """Mean of var over entire analysis period. """
-        return self._calc_mean_or_total(var, self.day_weights, do_total=False)
+    def mean_annual(self, var):
+        """Mean of var for each year, averaged over all years in period. """
+        return self._calc_seasons(var, [(1,12)], do_total=False)
 
-    def total(self, var):
-        """Total of var over entire analysis period. """
-        return self._calc_mean_or_total(var, self.day_weights, do_total=True)
+    def total_annual(self, var):
+        """Total of var for each year, averaged over all years in period. """
+        return self._calc_seasons(var, [(1,12)], do_total=True)
