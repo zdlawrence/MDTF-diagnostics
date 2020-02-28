@@ -5,32 +5,29 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, var, time_var, date_range, truncate=False):
+    def __init__(self, date_range, ds, var_name, time_name='time', truncate=False):
         """Compute monthly and annual climatologies for a single variable.
 
         Args:
-            var: NetCDF4 `Variable` to compute averages of.
-            time_var: NetCDF4 `Variable` corresponding to the 'time' dimension of 
-                `var`.
             date_range: Two-element list of [start year, end year]. Intervals 
                 are inclusive.
+            ds: NetCDF4 Dataset containing variable and its axes.
+            var_name: Name of the variable.
+            time_name: Name of the time axis.
         """
-        # parse time axis info
-        self.t_units = time_var.units
-        self.calendar = time_var.calendar.lower().replace(' ', '_')
-        avg_timestep = np.average(np.diff(time_var))
-        if avg_timestep < 8.0:
-            do_day_weights = False # sub-monthly
-        elif avg_timestep < 32.0:
-            do_day_weights = True # monthly frequency
-        else:
-            raise ValueError('Data needs to be monthly or greater frequency.')
-        self._half_step = datetime.timedelta(days=math.ceil(avg_timestep / 2.0))
-
-        # don't store refs to var itself in object, to allow GC
         self.truncate = truncate
+        # don't store refs to var itself in object, to allow GC
+        assert var_name in ds
+        var = ds.variables[var_name]
         self.dtype = var.dtype
         self.var_dim = len(var.shape)
+
+        # parse time axis info
+        assert time_name in ds.variables
+        time_var = ds.variables[time_name]
+        self.t_units = time_var.units
+        self.calendar = time_var.calendar.lower().replace(' ', '_')
+        self.t_weights = self.get_t_weights(ds, time_name)
         try:
             self.t_axis_pos = var.dimensions.index(time_var.name)
             self.latlon_dims = list(var.shape)
@@ -50,17 +47,6 @@ class Climatology(object):
             print('Error in parsing time axis for {}:'.format(var.name))
             print(exc)
             raise exc
-
-        dts = [self.num2date(t) for t in time_var]
-        self.months = np.array([dt.month for dt in dts], dtype=np.int8)
-        if do_day_weights:
-            yr_mons = [(dt.year, dt.month) for dt in dts]
-            self.day_weights = np.array([
-                    self.days_per_month(*ym, self.calendar) for ym in yr_mons
-                ], dtype=self.dtype
-            )
-        else:
-            self.day_weights = None
 
     def num2date(self, num):
         return nc.num2date(num, self.t_units, calendar=self.calendar)
@@ -114,6 +100,41 @@ class Climatology(object):
             return 31
         else:
             return 30
+
+    def get_t_weights(self, ds, time_name):
+        time_var = ds.variables[time_name]
+        # check for axes that may have info we need
+        var_names = {(s.lower().replace('_','')) : s for s in ds.variables.keys()}
+        if 'averagedt' in var_names:
+            ax = ds.variables[var_names['averagedt']]
+            assert ax.shape == time_var.shape
+            ax_copy = ax[:] # no copy() method for netCDF4 Variables
+            return ax_copy
+        if hasattr(time_var, 'bounds'):
+            time_bnds = time_var.bounds
+        else:
+            time_bnds = time_name + '_bnds'
+        if time_bnds in ds.variables:
+            bnds_var = ds.variables[time_bnds]
+            return np.diff(bnds_var, axis=bnds_var.shape.index(2))
+
+        # didn't find info in Dataset, compute manually
+        avg_timestep = np.average(np.diff(time_var))
+        if avg_timestep < 8.0:
+            # sub-monthly frequency
+            # can't just return None for no weighting, since weights are time-sliced
+            # could optimize for this case, though
+            return np.ones(time_var.shape, dtype=self.dtype)
+        elif avg_timestep < 32.0:
+            # monthly frequency
+            dts = [self.num2date(t) for t in time_var]
+            yr_mons = [(dt.year, dt.month) for dt in dts]
+            return np.array([
+                    self.days_per_month(*ym, self.calendar) for ym in yr_mons
+                ], dtype=self.dtype
+            )
+        else:
+            raise ValueError('Data needs to be monthly or greater frequency.')
 
     def get_date_range_ym(self, time_var, range_start, range_end):
         def _parse_date(dt, default_month):
@@ -219,7 +240,7 @@ class Climatology(object):
             ans_slice[0] = slice(i)
             var_slice[self.t_axis_pos] = t_slices[i]
             season_avgs[ans_slice], season_wts[ans_slice] = np.ma.average(
-                var[var_slice], weights=self.day_weights[t_slices[i]], 
+                var[var_slice], weights=self.t_weights[t_slices[i]], 
                 axis=self.t_axis_pos, returned=True
             )
         if do_total:
