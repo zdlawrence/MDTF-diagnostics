@@ -144,24 +144,36 @@ def prep_pr(ds, file_var_name):
     var = np.ma.masked_less(var, 0.0)
     return var
 
+KoppenAverages = namedtuple('KoppenAverages', 
+    ['annual', 'apr_sep', 'oct_mar', 'monthly']
+)
+
 def run_koppen(foo):
-    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', "r", keepweakref=True)
+    apr_sep_months = tuple(range(4,10)) # 4-9 inclusive, python conventions
+    oct_mar_months = tuple(set(range(1,13)).difference(apr_sep_months))
+
+    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', 'r', keepweakref=True)
     landmask_ds = XXX
     tas = prep_taslut(tas_ds, 'tas_var')
-    tas_clim = clim.Climatology(tas, XXX, date_range)
+    clim = climatology.Climatology(tas, tas_time, date_range)
+    tas_clim = KoppenAverages(
+        annual = clim.get_mean(tas)
+        apr_sep = None
+        oct_mar = None
+        monthly = clim.get_monthly(tas)
+    )
     tas_ds.close()
 
-    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', "r", keepweakref=True)
+    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', 'r', keepweakref=True)
     pr = prep_pr(pr_ds, 'pr_var')
-    pr_clim = clim.Climatology(pr, XXX, date_range)
+    clim = climatology.Climatology(pr, pr_time, date_range)
+    pr_clim = KoppenAverages(
+        annual = clim.get_mean(pr)
+        apr_sep = clim.get_season(pr, apr_sep_months)
+        oct_mar = clim.get_season(pr, oct_mar_months)
+        monthly = clim.get_monthly(pr)
+    )
     pr_ds.close()
-
-
-    ds = NCCommonAxis(tas_var=tas_ds, pr_var=pr_ds)
-
-    clim = Climatology(var_names, date_ranges, common_axes, dtype=dtype, 
-        do_monthly=True, do_annual=True)
-
 
 
 
