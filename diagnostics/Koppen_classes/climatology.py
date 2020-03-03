@@ -5,7 +5,7 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
-    def __init__(self, date_range, ds, var_name, time_name='time', truncate=False):
+    def __init__(self, date_range, var_name, ds, var=None, time_name='time', truncate=False):
         """Compute monthly and annual climatologies for a single variable.
 
         Args:
@@ -17,24 +17,25 @@ class Climatology(object):
         """
         self.truncate = truncate
         # don't store refs to var itself in object, to allow GC
-        assert var_name in ds
-        var = ds.variables[var_name]
+        if var is None:
+            var = ds.variables[var_name]
         self.dtype = var.dtype
-        self.var_dim = len(var.shape)
+        self.var_dimensions = ds.variables[var_name].dimensions
+        self.var_rank = len(var.shape)
 
         # parse time axis info
         assert time_name in ds.variables
         time_var = ds.variables[time_name]
         self.t_units = time_var.units
         self.calendar = time_var.calendar.lower().replace(' ', '_')
-        self.t_weights = self.get_t_weights(ds, time_name)
+        self.t_weights = np.squeeze(self.get_t_weights(ds, time_name))
         try:
-            self.t_axis_pos = var.dimensions.index(time_var.name)
+            self.t_axis_pos = self.var_dimensions.index(time_var.name)
             self.latlon_dims = list(var.shape)
             del self.latlon_dims[self.t_axis_pos]
         except (AssertionError, ValueError) as exc:
-            print('Error in dimensions of {}:'.format(var.name))
-            print('{}: {} -> {}'.format(var.name, var.dimensions, var.shape))
+            print('Error in dimensions of {}:'.format(var_name))
+            print('{}: {} -> {}'.format(var_name, self.var_dimensions, var.shape))
             print(exc)
             raise exc
         try:
@@ -44,7 +45,7 @@ class Climatology(object):
             self.end_y, self.end_m = self._from_ym(self.end_ym)
             self.lookup = self.get_date_range_indices(time_var)
         except (AssertionError, ValueError) as exc:
-            print('Error in parsing time axis for {}:'.format(var.name))
+            print('Error in parsing time axis for {}:'.format(var_name))
             print(exc)
             raise exc
 
@@ -227,8 +228,8 @@ class Climatology(object):
                 self.lookup[start_yms[i] - self.start_ym, 0],
                 self.lookup[end_yms[i] - self.start_ym, 1]
             ) for i in range(n_years)]
-        ans_slice = [slice(None)] * self.var_dim
-        var_slice = [slice(None)] * self.var_dim
+        slice_ = [slice(None)] * self.var_rank
+        var_slice = [slice(None)] * self.var_rank
         dims = tuple([n_years] + self.latlon_dims)
         season_avgs = np.ma.zeros(dims, dtype=self.dtype)
         season_wts = np.zeros(dims, dtype=self.dtype)
@@ -237,11 +238,13 @@ class Climatology(object):
             # average over one season. No easy way to do this with numpy as we 
             # want to handle the case of daily data, where season lengths may 
             # differ year to year.
-            ans_slice[0] = slice(i)
+            slice_[0] = slice(i)
             var_slice[self.t_axis_pos] = t_slices[i]
-            season_avgs[ans_slice], season_wts[ans_slice] = np.ma.average(
-                var[var_slice], weights=self.t_weights[t_slices[i]], 
-                axis=self.t_axis_pos, returned=True
+            season_avgs[tuple(slice_)], season_wts[tuple(slice_)] = np.ma.average(
+                var[tuple(var_slice)], 
+                weights=self.t_weights[t_slices[i]], 
+                axis=self.t_axis_pos, 
+                returned=True
             )
         if do_total:
             # numpy doesn't have tensordot for masked arrays. Instead of doing
@@ -267,22 +270,41 @@ class Climatology(object):
         for idx, label in enumerate(month_labels):
             ans_slice[0] = slice(idx)
             duration = (label[1] - label[0]) % 12
-            ans[ans_slice] = \
+            ans[tuple(ans_slice)] = \
                 self._calc_season(var, label[0], duration, do_total=do_total)
         return ans
 
+    _month_intervals = [(m,m) for m in range(1,13)]
+    _season_intervals =  [(12,2), (3,5), (6,8), (9,11)]
+
     def mean_monthly(self, var):
         """Mean of var for each month, averaged over all years in period. """
-        return self._calc_seasons(var, [(m,m) for m in range(1,13)], do_total=False)
+        return self._calc_seasons(var, self._month_intervals, do_total=False)
 
     def total_monthly(self, var):
         """Total of var for each month, averaged over all years in period. """
-        return self._calc_seasons(var, [(m,m) for m in range(1,13)], do_total=True)
+        return self._calc_seasons(var, self._month_intervals, do_total=True)
+
+    def mean_seasonal(self, var):
+        """Mean of var for each season, averaged over all years in period. """
+        return self._calc_seasons(var, self._season_intervals, do_total=False)
+
+    def total_seasonal(self, var):
+        """Total of var for each season, averaged over all years in period. """
+        return self._calc_seasons(var, self._season_intervals, do_total=True)
+
+    def custom_season_mean(self, var, season_start, season_end):
+        duration = (season_end - season_start) % 12
+        return self._calc_season(var, season_start, duration, do_total=False)
+    
+    def custom_season_total(self, var, season_start, season_end):
+        duration = (season_end - season_start) % 12
+        return self._calc_season(var, season_start, duration, do_total=True)
 
     def mean_annual(self, var):
         """Mean of var for each year, averaged over all years in period. """
-        return self._calc_seasons(var, [(1,12)], do_total=False)
+        return self.custom_season_mean(var, 1, 12)
 
     def total_annual(self, var):
         """Total of var for each year, averaged over all years in period. """
-        return self._calc_seasons(var, [(1,12)], do_total=True)
+        return self.custom_season_total(var, 1, 12)
