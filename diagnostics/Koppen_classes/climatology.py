@@ -188,7 +188,7 @@ class Climatology(object):
         """
         start_yms = [self._to_ym(y, season_start) \
             for y in range(self.start_y, self.end_y + 1)]
-        end_yms = [ym + duration for ym in start_yms]
+        end_yms = [ym + duration - 1 for ym in start_yms]
 
         if end_yms[0] < self.start_ym:
             # first season outside date range; start following year instead
@@ -228,7 +228,6 @@ class Climatology(object):
                 self.lookup[start_yms[i] - self.start_ym, 0],
                 self.lookup[end_yms[i] - self.start_ym, 1]
             ) for i in range(n_years)]
-        slice_ = [slice(None)] * self.var_rank
         var_slice = [slice(None)] * self.var_rank
         dims = tuple([n_years] + self.latlon_dims)
         season_avgs = np.ma.zeros(dims, dtype=self.dtype)
@@ -238,9 +237,8 @@ class Climatology(object):
             # average over one season. No easy way to do this with numpy as we 
             # want to handle the case of daily data, where season lengths may 
             # differ year to year.
-            slice_[0] = slice(i)
             var_slice[self.t_axis_pos] = t_slices[i]
-            season_avgs[tuple(slice_)], season_wts[tuple(slice_)] = np.ma.average(
+            season_avgs[i, Ellipsis], season_wts[i, Ellipsis] = np.ma.average(
                 var[tuple(var_slice)], 
                 weights=self.t_weights[t_slices[i]], 
                 axis=self.t_axis_pos, 
@@ -264,13 +262,11 @@ class Climatology(object):
         JJA average.
         """
         dims = tuple([len(month_labels)] + self.latlon_dims)
-        ans_slice = [slice(None)] * len(dims)
         ans = np.ma.masked_all(dims, dtype=self.dtype)
         # Small number of seasons, so no need to optimize this loop
         for idx, label in enumerate(month_labels):
-            ans_slice[0] = slice(idx)
-            duration = (label[1] - label[0]) % 12
-            ans[tuple(ans_slice)] = \
+            duration = (label[1] - label[0]) % 12 + 1
+            ans[idx, Ellipsis] = \
                 self._calc_season(var, label[0], duration, do_total=do_total)
         return ans
 
@@ -294,17 +290,17 @@ class Climatology(object):
         return self._calc_seasons(var, self._season_intervals, do_total=True)
 
     def custom_season_mean(self, var, season_start, season_end):
-        duration = (season_end - season_start) % 12
+        duration = (season_end - season_start) % 12 + 1
         return self._calc_season(var, season_start, duration, do_total=False)
     
     def custom_season_total(self, var, season_start, season_end):
-        duration = (season_end - season_start) % 12
+        duration = (season_end - season_start) % 12 + 1
         return self._calc_season(var, season_start, duration, do_total=True)
 
     def mean_annual(self, var):
         """Mean of var for each year, averaged over all years in period. """
-        return self.custom_season_mean(var, 1, 12)
+        return self._calc_season(var, 1, 12, do_total=False)
 
     def total_annual(self, var):
         """Total of var for each year, averaged over all years in period. """
-        return self.custom_season_total(var, 1, 12)
+        return self._calc_season(var, 1, 12, do_total=True)
