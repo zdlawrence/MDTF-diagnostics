@@ -131,19 +131,20 @@ class Koppen(object):
         self.classes = np.zeros(pr.annual.shape, dtype=np.ubyte) # maps onto netcdf UBYTE
 
     def p_thresh(self, pr, summer_is_apr_sep):
-        P_s_frac = np.ma.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar) / pr.annual
-        P_w_frac = np.ma.where(summer_is_apr_sep, pr.oct_mar, pr.apr_sep) / pr.annual
-        s_weight = (1.0 - P_w_frac) / (P_s_frac - P_w_frac)
-        return np.select([
-                s_weight * P_s_frac >= self.P_thresh_cutoff, 
-                (1.0 - s_weight) * P_w_frac >= self.P_thresh_cutoff, 
-                True
-            ],[
-                2.0 * self.T_ann + 28.0, 
-                2.0 * self.T_ann, 
-                2.0 * self.T_ann + 14.0
-            ]
+        p_summer = np.ma.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar)
+        p_winter = np.ma.where(summer_is_apr_sep, pr.oct_mar, pr.apr_sep)
+        ans = 2.0 * self.T_ann + 14.0 # default value
+        ans = np.ma.where(
+            p_summer >= self.P_thresh_cutoff * pr.annual, 
+            2.0 * self.T_ann + 28.0, 
+            ans
         )
+        ans = np.ma.where(
+            p_winter >= self.P_thresh_cutoff * pr.annual, 
+            2.0 * self.T_ann, 
+            ans
+        )
+        return ans
 
     @staticmethod
     def _and(*conditions, and_not=None):
