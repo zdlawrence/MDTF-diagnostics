@@ -102,36 +102,37 @@ class Koppen(object):
         assert sum(oct_mar_mask) == 6
 
         if not summer_is_apr_sep:
-            summer_is_apr_sep = np.asarray(tas.apr_sep >= tas.oct_mar)
+            summer_is_apr_sep = (tas.apr_sep >= tas.oct_mar)
         else:
             assert summer_is_apr_sep.shape == pr.annual.shape
 
         self.P_ann = pr.annual
         self.T_ann = tas.annual
-        self.T_max = np.amax(tas.monthly, axis=month_axis)
-        self.T_min = np.amin(tas.monthly, axis=month_axis)
-        self.n_warm = np.count_nonzero(tas.monthly > 10.0, axis=month_axis)
-        self.P_min = np.amin(pr.monthly, axis=month_axis)
+        self.T_max = np.ma.max(tas.monthly, axis=month_axis)
+        self.T_min = np.ma.min(tas.monthly, axis=month_axis)
+        t_temp = np.ma.filled(tas.monthly, fill_value = 0.0) # only used in next line
+        self.n_warm = np.count_nonzero(t_temp > 10.0, axis=month_axis)
+        self.P_min = np.ma.min(pr.monthly, axis=month_axis)
 
         # can't use 'where' kwarg on maskedarrays; workaround
-        p_temp = np.take(pr.monthly, apr_sep_mask, axis=month_axis)
-        P_AS_min = np.amin(p_temp, axis=month_axis)
-        P_AS_max = np.amax(p_temp, axis=month_axis)
-        p_temp = np.take(pr.monthly, oct_mar_mask, axis=month_axis)
-        P_OM_min = np.amin(p_temp, axis=month_axis)
-        P_OM_max = np.amax(p_temp, axis=month_axis)
-        self.P_smin = np.where(summer_is_apr_sep, P_AS_min, P_OM_min)
-        self.P_wmin = np.where(summer_is_apr_sep, P_OM_min, P_AS_min)
-        self.P_smax = np.where(summer_is_apr_sep, P_AS_max, P_OM_max)
-        self.P_wmax = np.where(summer_is_apr_sep, P_OM_max, P_AS_max)
+        p_temp = np.ma.take(pr.monthly, apr_sep_mask, axis=month_axis)
+        P_AS_min = np.ma.min(p_temp, axis=month_axis)
+        P_AS_max = np.ma.max(p_temp, axis=month_axis)
+        p_temp = np.ma.take(pr.monthly, oct_mar_mask, axis=month_axis)
+        P_OM_min = np.ma.min(p_temp, axis=month_axis)
+        P_OM_max = np.ma.max(p_temp, axis=month_axis)
+        self.P_smin = np.ma.where(summer_is_apr_sep, P_AS_min, P_OM_min)
+        self.P_wmin = np.ma.where(summer_is_apr_sep, P_OM_min, P_AS_min)
+        self.P_smax = np.ma.where(summer_is_apr_sep, P_AS_max, P_OM_max)
+        self.P_wmax = np.ma.where(summer_is_apr_sep, P_OM_max, P_AS_max)
         
         self.P_thresh = self.p_thresh(pr, summer_is_apr_sep)
         self.all_true = np.full(pr.annual.shape, True, dtype=np.bool)
         self.classes = np.zeros(pr.annual.shape, dtype=np.ubyte) # maps onto netcdf UBYTE
 
     def p_thresh(self, pr, summer_is_apr_sep):
-        P_s_frac = np.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar) / pr.annual
-        P_w_frac = np.where(summer_is_apr_sep, pr.oct_mar, pr.apr_sep) / pr.annual
+        P_s_frac = np.ma.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar) / pr.annual
+        P_w_frac = np.ma.where(summer_is_apr_sep, pr.oct_mar, pr.apr_sep) / pr.annual
         s_weight = (1.0 - P_w_frac) / (P_s_frac - P_w_frac)
         return np.select([
                 s_weight * P_s_frac >= self.P_thresh_cutoff, 
@@ -146,21 +147,14 @@ class Koppen(object):
 
     @staticmethod
     def _and(*conditions, and_not=None):
-        if and_not:
-            return np.logical_and.reduce(conditions + [np.logical_not(and_not)])
-        elif len(conditions) == 2:
-            return np.logical_and(*conditions)
+        if and_not is not None:
+            return np.ma.all(conditions + [np.logical_not(and_not)], axis=0)
         else:
-            return np.all(conditions, axis=0)
+            return np.ma.all(conditions, axis=0)
 
     @staticmethod
     def _not(*conditions):
-        if len(conditions) == 1:
-            return np.logical_not(*conditions)
-        elif len(conditions) == 2:
-            return np.logical_not(np.logical_or(*conditions))
-        else:
-            return np.logical_not(np.any(conditions, axis=0))
+        return np.logical_not(np.ma.any(conditions, axis=0))
 
     def major(self, d):
         # implemented in child classes since conventions define this differently
@@ -332,7 +326,7 @@ class Koppen_Peel07(Koppen):
         d['TropicalRainforest'] = (self.P_min >= 60.0)
         p_compare = (self.P_min >= 100.0 - self.P_ann / 25.0)
         d['TropicalMonsoon'] = self._and(p_compare, and_not=d['TropicalRainforest'])
-        d['TropicalSavannaDryWinter'] = self._and(np.logical_not(p_compare), and_not=d['TropicalRainforest'])
+        d['TropicalSavannaDryWinter'] = self._and(self._not(p_compare), and_not=d['TropicalRainforest'])
         d['TropicalSavannaDrySummer'] = self._not(self.all_true) # category not used
 
     def p_Temperate(self, d):
