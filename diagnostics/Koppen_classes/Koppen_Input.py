@@ -5,7 +5,6 @@ Created on Oct 23, 2019
 '''
 import os
 import collections
-import math
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,93 +13,6 @@ from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 import Koppen
 import climatology
-
-def copy_axis(ax_name, src_ds, dst_ds, bounds=True):
-    """Copy Dimension and associated Variable from one one netCDF4 Dataset to 
-    another, since this isn't provided directly by the netCDF4 module. If 
-    Based on discussion in https://stackoverflow.com/a/49592545.
-    """
-    def _copy_dimension(dim_name):
-        assert dim_name in src_ds.dimensions
-        dim = src_ds.dimensions[dim_name]
-        if dim_name not in dst_ds.dimensions:
-            dst_ds.createDimension(
-                dim_name, (dim.size if not dim.isunlimited() else None)
-            )
-        else:
-            # netcdf library doesn't implement deleting dimensions, so no overwrite
-            assert dim.size == dst_ds.dimensions[dim_name].size
-
-    def _copy_variable(var_name):
-        assert var_name in src_ds.variables
-        var = src_ds.variables[var_name]
-        if var_name not in dst_ds.variables:
-            dst_ds.createVariable(var_name, var.datatype, var.dimensions)
-            # copy variable attributes first, all at once via dictionary
-            dst_ds[var_name].setncatts(src_ds[var_name].__dict__)
-            # copy data
-            dst_ds[var_name][:] = src_ds[var_name][:]
-        else:
-            # netcdf library doesn't implement deleting variables, so no overwrite
-            assert var.shape == dst_ds.variables[var_name].shape
-
-    _copy_dimension(ax_name)
-    if ax_name in src_ds.variables:
-        _copy_variable(ax_name)
-    if bounds:
-        ax_bnds_name = ax_name+'_bnds'
-        if ax_bnds_name in src_ds.variables:
-            _copy_variable(ax_bnds_name)
-            for dim in src_ds.variables[ax_bnds_name].dimensions:
-                _copy_dimension(dim)
-                if dim in src_ds.variables:
-                    _copy_variable(dim)
-
-
-class NCCommonAxis(object):
-    """Class for working with a collection of netCDF Datasets (assumed to be one
-    Dataset per variable) on a set of common axes. 
-    """
-    def __init__(self, **ds_dict):
-        self.ds_dict = ds_dict
-
-        self.my_ax_names = collections.OrderedDict()
-        _d = {'time_coord':'time', 'lat_coord':'lat', 'lon_coord':'lon'}
-        for k,v in _d.items():
-            self.my_ax_names[k] = v
-
-        self.file_var_names = dict()
-        self.file_ax_names = collections.OrderedDict()
-        self.names_from_envvars()
-
-        # used for in-memory storage only, but netCDF4 requires we pass a filename
-        self.common_axes = nc.Dataset('dummy_filename.nc', diskless=True, persist=False)
-        self.common_dtype = np.float64
-
-    # -----------------------------------------------------------
-
-    def names_from_envvars(self):
-        for envvar_name, ds in self.ds_dict.items():
-            assert envvar_name in os.environ
-            self.file_var_names[envvar_name] = os.environ[envvar_name]
-            assert self.file_var_names[envvar_name] in ds.variables
-        
-        for envvar_name in self.my_ax_names:
-            assert envvar_name in os.environ
-            self.file_ax_names[envvar_name] = os.environ[envvar_name]
-
-    def collect_axes(self):
-        for ds in self.ds_dict.values():
-            self.copy_axes(ds, self.common_axes, bounds=False)
-
-            for k in my_ax_names:
-            old_ax = file_ax_names[k]
-            new_ax = my_ax_names[k]
-            dst_ds.renameVariable(old_ax, new_ax)
-            dst_ds.renameDimension(old_ax, new_ax)
-
-    def get_axis(self, my_ax_name):
-        pass
 
 
 def prep_taslut(ds, file_var_name):
@@ -147,12 +59,10 @@ def prep_pr(ds, file_var_name):
     ans = ans * 86400.0 # assume flux kg/m2/s (mm/s), convert to mm/day
     return ans
 
-KoppenAverages = namedtuple('KoppenAverages', 
-    ['annual', 'apr_sep', 'oct_mar', 'monthly']
-)
-def run_koppen(foo):
-    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', 'r', keepweakref=True)
-    landmask_ds = XXX
+def calc_koppen_classes(date_range, tas_ds, pr_ds, landmask_ds=None):
+    KoppenAverages = collections.namedtuple('KoppenAverages', 
+        ['annual', 'apr_sep', 'oct_mar', 'monthly']
+    )
     tas = prep_taslut(tas_ds, 'tasLut')
     clim = climatology.Climatology(date_range, 'tasLut', tas_ds, var=tas)
     tas_clim = KoppenAverages(
@@ -161,9 +71,8 @@ def run_koppen(foo):
         oct_mar = clim.custom_season_mean(tas, 10, 3),
         monthly = clim.mean_monthly(tas)
     )
-    tas_ds.close()
+    del tas
 
-    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', 'r', keepweakref=True)
     pr = prep_pr(pr_ds, 'pr')
     clim = climatology.Climatology(date_range, 'pr', pr_ds, var=pr)
     pr_clim = KoppenAverages(
@@ -172,11 +81,11 @@ def run_koppen(foo):
         oct_mar = clim.custom_season_total(pr, 10, 3),
         monthly = clim.total_monthly(pr)
     )
-    pr_ds.close()
+    del pr
 
     koppen = Koppen(tas_clim, pr_clim, summer_is_apr_sep=None)
     koppen.make_classes()
-
+    return koppen.classes
 
 # -------------------------------------
 
@@ -230,7 +139,7 @@ def munge_ax(ds, bnds_name, shape):
     ax = np.expand_dims(ax, axis=new_ax_pos)
     return np.broadcast_to(ax, (shape[0]+1, shape[1]+1))
 
-def koppen_plot(var, ds):
+def koppen_plot(var, ds, output_file=None):
     lat = munge_ax(ds, 'lat_bnds', var.shape)
     lon = munge_ax(ds, 'lon_bnds', var.shape)
     var = np.ma.masked_equal(var, 0)
@@ -252,7 +161,7 @@ def koppen_plot(var, ds):
         idx = [p.get_label() for p in legend_entries].index(k_cls)
         legend_entries.insert(idx + 1, Patch(facecolor='w', edgecolor='w', label=''))
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(16, 8))
     ax = plt.gca(projection=ccrs.PlateCarree(), )
     ax.pcolormesh(lon, lat, var, cmap=c_map, transform=ccrs.PlateCarree())
     ax.coastlines()
@@ -267,15 +176,71 @@ def koppen_plot(var, ds):
     # saved (current known issue in matplotlib) or we might be working within
     # a subplot.
     _leg = ax.legend(
-        handles=legend_entries, fontsize='large'frameon=False, ncol=9,
-        loc='upper center', borderaxespad=0, bbox_to_anchor=(0.0, -0.25, 1.0, 0.2)
+        handles=legend_entries, fontsize='large', frameon=False, 
+        loc='upper center', ncol=9,
+        borderaxespad=0, bbox_to_anchor=(0.0, -0.25, 1.0, 0.2)
     )
     # Expand legend bounding box downward: https://stackoverflow.com/a/46711725
     fontsize = fig.canvas.get_renderer().points_to_pixels(_leg._fontsize)
-    pad = 2*(_leg.borderaxespad + _leg.borderpad) * fontsize
+    pad = 2 * (_leg.borderaxespad + _leg.borderpad) * fontsize
     _leg._legend_box.set_height(_leg.get_bbox_to_anchor().height - pad)
 
-    plt.show()
+    if output_file is None:
+        # assume we're being called interactively
+        plt.show()
+    else:
+        plt.savefig(output_file, bbox_inches='tight')
+
+# -------------------------------------
+
+def copy_axis(ax_name, src_ds, dst_ds, bounds=True):
+    """Copy Dimension and associated Variable from one one netCDF4 Dataset to 
+    another, since this isn't provided directly by the netCDF4 module. If 
+    Based on discussion in https://stackoverflow.com/a/49592545.
+    """
+    def _copy_dimension(dim_name):
+        assert dim_name in src_ds.dimensions
+        dim = src_ds.dimensions[dim_name]
+        if dim_name not in dst_ds.dimensions:
+            dst_ds.createDimension(
+                dim_name, (dim.size if not dim.isunlimited() else None)
+            )
+        else:
+            # netcdf library doesn't implement deleting dimensions, so no overwrite
+            assert dim.size == dst_ds.dimensions[dim_name].size
+
+    def _copy_variable(var_name):
+        assert var_name in src_ds.variables
+        var = src_ds.variables[var_name]
+        if var_name not in dst_ds.variables:
+            dst_ds.createVariable(var_name, var.datatype, var.dimensions)
+            # copy variable attributes first, all at once via dictionary
+            dst_ds[var_name].setncatts(src_ds[var_name].__dict__)
+            # copy data
+            dst_ds[var_name][:] = src_ds[var_name][:]
+        else:
+            # netcdf library doesn't implement deleting variables, so no overwrite
+            assert var.shape == dst_ds.variables[var_name].shape
+
+    _copy_dimension(ax_name)
+    if ax_name in src_ds.variables:
+        _copy_variable(ax_name)
+    if bounds:
+        ax_bnds_name = ax_name+'_bnds'
+        if ax_bnds_name in src_ds.variables:
+            _copy_variable(ax_bnds_name)
+            for dim in src_ds.variables[ax_bnds_name].dimensions:
+                _copy_dimension(dim)
+                if dim in src_ds.variables:
+                    _copy_variable(dim)
+
+
+    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', 'r', keepweakref=True)
+    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', 'r', keepweakref=True)
+    classes = calc_koppen_classes(date_range, tas_ds, pr_ds)
+    if save_nc:
+        pass
+    koppen_plot(classes, pr_ds)
 
 
 if __name__ == '__main__':
