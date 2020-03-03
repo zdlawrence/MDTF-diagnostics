@@ -127,6 +127,10 @@ class Koppen(object):
         self.P_wmax = np.ma.where(summer_is_apr_sep, P_OM_max, P_AS_max)
         
         self.P_thresh = self.p_thresh(pr, summer_is_apr_sep)
+        self.input_mask = np.logical_or(
+            np.ma.getmaskarray(tas.annual),
+            np.ma.getmaskarray(pr.annual)
+        )
         self.all_true = np.full(pr.annual.shape, True, dtype=np.bool)
         self.classes = np.zeros(pr.annual.shape, dtype=np.ubyte) # maps onto netcdf UBYTE
 
@@ -149,7 +153,7 @@ class Koppen(object):
     @staticmethod
     def _and(*conditions, and_not=None):
         if and_not is not None:
-            return np.ma.all(conditions + [np.logical_not(and_not)], axis=0)
+            return np.ma.all(list(conditions) + [np.logical_not(and_not)], axis=0)
         else:
             return np.ma.all(conditions, axis=0)
 
@@ -240,6 +244,7 @@ class Koppen(object):
                     for t_name, t_code in label.minor_t.items():
                         mask = self._and(d[maj], d[maj+p_name], d[maj+t_name])
                         self.classes[mask] = KoppenClass[code + p_code + t_code].value
+        self.classes[self.input_mask] = 0
 
 
 class Koppen_Kottek06(Koppen):
@@ -256,7 +261,7 @@ class Koppen_Kottek06(Koppen):
             self.T_min >= 18.0, 
             not_arid_or_polar
         )
-        d['Temparate'] = self._and(
+        d['Temperate'] = self._and(
             self.T_min > -3.0, 
             self.T_min < 18.0, 
             not_arid_or_polar
@@ -307,7 +312,7 @@ class Koppen_Peel07(Koppen):
             self.T_min >= 18.0, 
             not_arid
         )
-        d['Temparate'] = self._and(
+        d['Temperate'] = self._and(
             self.T_max > 10.0, 
             self.T_min < 18.0, 
             self.T_min >= 0.0, 
