@@ -1,24 +1,39 @@
-'''
-Created on Oct 2, 2019
-
-@author: Diyor.Zakirov
-'''
 import os
+import collections
 import unittest
 # import mock # define mock os.environ so we don't mess up real env vars
-from Koppen import Koppen,Hemisphere
-from Climate import Climate
+import netCDF4 as nc
 import numpy as np
+import Koppen
 
 
 class TestKoppenClasses(unittest.TestCase):
     def _koppen_wrapper(self, expected_result, temp, precip):
-        # wrap init of Climate object in one place to catch typos
         assert len(temp) == 12
         assert len(precip) == 12
-        test_clim = Climate(28.25, Hemisphere.NORTHERN, np.array(temp), np.array(precip))
-        kp = Koppen()
-        self.assertEqual(kp.makeZones(test_clim), expected_result)
+        apr_sep_mask = [m <= 4 and m >= 9 for m in range(1,13)]
+        oct_mar_mask = [m >= 10 or m <= 3 for m in range(1,13)]
+        KoppenAverages = collections.namedtuple('KoppenAverages', 
+            ['annual', 'apr_sep', 'oct_mar', 'monthly']
+        )
+        tas_months = np.expand_dims(np.expand_dims(np.ma.masked_array(temp),1),2)
+        tas_clim = KoppenAverages(
+            annual = np.ma.average(tas_months, axis=0),
+            apr_sep = np.ma.average(tas_months[apr_sep_mask, Ellipsis], axis=0),
+            oct_mar = np.ma.average(tas_months[oct_mar_mask, Ellipsis], axis=0),
+            monthly = tas_months
+        )
+        pr_months = np.expand_dims(np.expand_dims(np.ma.masked_array(precip),1),2)
+        pr_clim = KoppenAverages(
+            annual = np.ma.sum(pr_months, axis=0),
+            apr_sep = np.ma.sum(pr_months[apr_sep_mask, Ellipsis], axis=0),
+            oct_mar = np.ma.sum(pr_months[oct_mar_mask, Ellipsis], axis=0),
+            monthly = pr_months
+        )
+        n_hemisphere_mask = np.full((1,1), True, dtype=np.bool)
+        koppen = Koppen.Koppen_GFDL(tas_clim, pr_clim, summer_is_apr_sep=n_hemisphere_mask)
+        k_class = koppen.make_classes()
+        self.assertEqual(k_class[1,1], Koppen.KoppenClass[expected_result].value)
 
     def test_Af(self):   
         self._koppen_wrapper(
