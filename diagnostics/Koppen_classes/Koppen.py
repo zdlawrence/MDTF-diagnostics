@@ -1,8 +1,3 @@
-'''
-Created on Oct 2, 2019
-
-@author: Diyor.Zakirov, Raymond.Menzel
-'''
 import collections
 import enum
 import numpy as np
@@ -81,6 +76,8 @@ KoppenLabels = [
         )
     ) for kc in KoppenLabels
 ]
+# Generate Enum mapping integers used to label output to corresponding 
+# Koppen codes (eg "Csc").
 KoppenClass = enum.IntEnum(
     'KoppenClass', 
     [
@@ -92,9 +89,24 @@ KoppenClass = enum.IntEnum(
 )
 
 class Koppen(object):
+    """Parent class containing common logic for different conventions used for
+    Koppen classes. Can't be used directly; instead use one of the child classes
+    below corresponding to a specific convention.
+    """
     P_thresh_cutoff = None
 
     def __init__(self, tas, pr, summer_is_apr_sep=None):
+        """Compute intermediate variables used for Koppen classification.
+
+        Args:
+            tas: namedtuple of monthly, seasonal, annual climatologies for tas.
+            pr: namedtuple of monthly, seasonal, annual climatologies for pr.
+            summer_is_apr_sep: (boolean numpy Array, optional) Dimensions must be
+                equal to spatial dimensions of tas/pr. If provided, take "summer"
+                to be Apr-Sep in the locations where True (otherwise "summer" is
+                Oct-Mar). If ommitted, define "summer" to be the season with
+                highest mean tas (out of {apr-sep, oct-mar}.)
+        """
         month_axis = 0
         apr_sep_mask = [True if (m >= 4 and m <= 9) else False for m in range(1,13)]
         oct_mar_mask = [not m for m in apr_sep_mask]
@@ -131,8 +143,8 @@ class Koppen(object):
             np.ma.getmaskarray(tas.annual),
             np.ma.getmaskarray(pr.annual)
         )
-        self.all_true = np.full(pr.annual.shape, True, dtype=np.bool)
-        self.classes = np.zeros(pr.annual.shape, dtype=np.ubyte) # maps onto netcdf UBYTE
+        self.latlon_shape = pr.annual.shape
+        self.all_true = np.full(self.latlon_shape, True, dtype=np.bool)
 
     def p_thresh(self, pr, summer_is_apr_sep):
         p_summer = np.ma.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar)
@@ -223,6 +235,15 @@ class Koppen(object):
         d['PolarEternalFrost'] = self._not(d['PolarTundra'])
 
     def make_classes(self):
+        """Compute Koppen classes.
+        
+        Returns:
+            numpy Array of dtype ubyte and dimensions equal to spatial dimensions 
+            of tas/pr. Each entry labels the Koppen class for that cell according 
+            to the values in the KoppenClass enum (eg. KoppenClass['Csc'].value). 
+            Entries of 0 correspond to masked, missing or invalid data.
+        """
+        classes = np.zeros(self.latlon_shape, dtype=np.ubyte) # maps onto netcdf UBYTE
         d = dict()
         # split each criterion into its own function, to make it clear where
         # conventions (child classes) differ.
@@ -243,11 +264,16 @@ class Koppen(object):
                 for p_name, p_code in label.minor_p.items():
                     for t_name, t_code in label.minor_t.items():
                         mask = self._and(d[maj], d[maj+p_name], d[maj+t_name])
-                        self.classes[mask] = KoppenClass[code + p_code + t_code].value
-        self.classes[self.input_mask] = 0
+                        classes[mask] = KoppenClass[code + p_code + t_code].value
+        classes[self.input_mask] = 0
+        return classes
 
 
 class Koppen_Kottek06(Koppen):
+    """Koppen classification as used in Kottek et al., "World Map of the 
+    Koppen-Geiger climate classification updated", Meteorologische Zeitschrift. 
+    15 (3): 259–263 (2006); https://doi.org/10.1127%2F0941-2948%2F2006%2F0130. 
+    """
     P_thresh_cutoff = 2.0/3.0
 
     def major(self, d):
@@ -303,6 +329,10 @@ class Koppen_Kottek06(Koppen):
         )
 
 class Koppen_Peel07(Koppen):
+    """Koppen classification as used in Peel, Finlayson & McMahon, "Updated 
+    world map of the Koppen–Geiger climate classification," Hydrol. Earth Syst. 
+    Sci. 11 (5): 1633–1644 (2007); https://doi.org/10.5194%2Fhess-11-1633-2007. 
+    """
     P_thresh_cutoff = 0.7
 
     def major(self, d):

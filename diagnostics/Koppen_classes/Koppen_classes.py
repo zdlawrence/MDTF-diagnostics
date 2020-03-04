@@ -1,9 +1,13 @@
 #!/usr/bin/env python
-'''
-Created on Oct 23, 2019
+"""
+Top-level script to compute and plot Koppen land climate classes.
 
-@author: Diyor.Zakirov
-'''
+Author/maintainer: Tom Jackson
+This is a python port of work by Chris Dupuis, Diyor Zakirov and Raymond Menzel.
+
+User-facing functions (besides __main__) are calc_koppen_classes(), 
+koppen_plot() and write_nc_output().
+"""
 import os
 import argparse
 import collections
@@ -21,6 +25,7 @@ import climatology
 # processing NetCDF data, computing climatologies and Koppen classes
 
 def prep_taslut(file_var_name, ds, args):
+    """Pre-process tas data before computing climatology. Convert units to C."""
     var = ds.variables[file_var_name]
     ans = var[:] # copy np.Array
     if len(var.dimensions) == 3:
@@ -56,6 +61,8 @@ def prep_taslut(file_var_name, ds, args):
     return ans
 
 def prep_pr(file_var_name, ds, args):
+    """Pre-process pr data before computing climatology. 
+    Convert units to mm/day."""
     ans = ds.variables[file_var_name][:]
     ans = np.ma.masked_invalid(ans)
     ans = np.ma.masked_less(ans, 0.0)
@@ -66,6 +73,23 @@ def prep_pr(file_var_name, ds, args):
     return ans
 
 def calc_koppen_classes(date_range, tas_ds, pr_ds, args=None):
+    """Compute Koppen classes from tas and pr, provided as netCDF Datasets.
+
+    Args:
+        date_range: Two-element list of [start year, end year] to average over. 
+            Intervals are inclusive.
+        tas_ds: (netCDF4 Dataset): tas data.
+        pr_ds: (netCDF4 Dataset): pr data.
+        args: (dict, optional): Config options set if this is being called from
+            the command-line or the MDTF diagnostics framework.
+
+    Returns:
+        numpy Array of dtype ubyte and dimensions equal to spatial dimensions of
+        tas/pr. Each entry labels the Koppen class for that cell according to
+        the values in the Koppen.KoppenClass enum 
+        (eg. Koppen.KoppenClass['Csc'].value). Entries of 0 correspond to masked,
+        missing or invalid data.
+    """
     KoppenAverages = collections.namedtuple('KoppenAverages', 
         ['annual', 'apr_sep', 'oct_mar', 'monthly']
     )
@@ -95,8 +119,7 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, args=None):
     del pr
 
     koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
-    koppen.make_classes()
-    return koppen.classes
+    return koppen.make_classes()
 
 # -------------------------------------
 # plotting koppen classes
@@ -139,6 +162,8 @@ def get_color(i):
     return tuple([rgb / 255.0 for rgb in koppen_colors[key]])
 
 def munge_ax(ax_name, ds, data_shape):
+    """Convert Dataset axes into a format accepted by 
+    matplotlib.pyplot.pcolormap. """
     # pcolormap wants X, Y to be rectangle bounds (so longer than array being
     # plotted by one entry) and also doesn't automatically broadcast.
     bnds_name = bounds_name(ax_name, ds)
@@ -168,6 +193,14 @@ def munge_ax(ax_name, ds, data_shape):
     return np.broadcast_to(ax_bnds, (data_shape[0]+1, data_shape[1]+1))
 
 def koppen_plot(var, ds, args=None):
+    """Plot Koppen classes with legend, using colors defined above.
+
+    Args:
+        var: (numpy Array) output of calc_koppen_classes().
+        ds: (netCDF4 Dataset) Dataset containing lat/lon axis information.
+        args: (dict, optional) Config options set if this is being called from
+            the command-line or the MDTF diagnostics framework.
+    """
     if args is None:
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)
@@ -246,9 +279,8 @@ def bounds_name(ax_name, ds):
     return (ax_bnds if ax_bnds in ds.variables else None)
 
 def copy_nc_axis(ax_name, src_ds, dst_ds):
-    """Copy Dimension and associated Variable from one one netCDF4 Dataset to 
-    another, since this isn't provided directly by the netCDF4 module. If 
-    Based on discussion in https://stackoverflow.com/a/49592545.
+    """Copy Dimension and associated Variable(s) from one one netCDF4 Dataset to 
+    another. Based on discussion in https://stackoverflow.com/a/49592545.
     """
     def _copy_dimension(dim_name):
         assert dim_name in src_ds.dimensions
@@ -286,6 +318,15 @@ def copy_nc_axis(ax_name, src_ds, dst_ds):
                 _copy_variable(dim)
 
 def write_nc_output(nc_out_path, classes, ds, args=None):
+    """Write Koppen classes to a NetCDF file.
+
+    Args:
+        nc_out_path: (str) Destination path.
+        classes: (numpy Array) output of calc_koppen_classes().
+        ds: (netCDF4 Dataset) Dataset containing lat/lon axis information.
+        args: (dict, optional) Config options set if this is being called from
+            the command-line or the MDTF diagnostics framework.
+    """
     if args is None:
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)

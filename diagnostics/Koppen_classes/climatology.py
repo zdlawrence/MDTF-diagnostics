@@ -5,15 +5,26 @@ import netCDF4 as nc
 import numpy as np
 
 class Climatology(object):
+    """Class to compute monthly, seasonal and/or annual climatologies from a 
+    netCDF Dataset containing a single gridded variable at monthly or 
+    sub-monthly frequency.
+    """
+
     def __init__(self, date_range, var_name, ds, var=None, time_name='time', truncate=False):
-        """Compute monthly and annual climatologies for a single variable.
+        """Calculate lookup tables etc. for computing climatologies, which are
+        done with the mean_* and total_* methods at the end of the file.
 
         Args:
             date_range: Two-element list of [start year, end year]. Intervals 
                 are inclusive.
-            ds: NetCDF4 Dataset containing variable and its axes.
-            var_name: Name of the variable.
-            time_name: Name of the time axis.
+            var_name: (str) Name of the Variable in ds to compute averages of.
+            ds: NetCDF4 Dataset containing variable to average and its axes.
+            var: (numpy MaskedArray, optional) If provided, set up object to 
+                compute averages of var instead of ds.variables[var_name]. This
+                is useful if ds.variables[var_name] needs to be pre-processed 
+                before averaging.
+            time_name: (str) Name of the time dimension of var_name. Must be a
+                Variable in ds.
         """
         self.truncate = truncate
         # don't store refs to var itself in object, to allow GC
@@ -68,6 +79,9 @@ class Climatology(object):
 
     @staticmethod
     def days_per_month(year, month, calendar):
+        """Return number of days in given month (as an int), for all CF
+        calendar conventions.
+        """
         # http://cfconventions.org/Data/cf-conventions/cf-conventions-1.8/cf-conventions.html#calendar
         def _is_leap(year, calendar):
             if calendar in ('noleap', 'no_leap', '365day', '365_day'):
@@ -182,9 +196,16 @@ class Climatology(object):
     # ---------------------------------------------------
 
     def _calc_season(self, var, season_start, duration, do_total=False):
-        """Given same NetCDF4 Variable used to initialize object and a list of
-        months in the season, return average of (average/total for the season) 
-        over entire analysis period.
+        """Return average of (average/total for the season) over entire analysis 
+        period.
+
+        Args:
+            var: (numpy MaskedArray) Variable to average, of the same dimensions 
+                used to initialize object.
+            season_start: (integer 1-12) Starting month for the season.
+            duration: (integer >0, <=12) Length of season in months.
+            do_total: Set to true to compute total for season, otherwise
+                compute average.
         """
         start_yms = [self._to_ym(y, season_start) \
             for y in range(self.start_y, self.end_y + 1)]
@@ -253,8 +274,8 @@ class Climatology(object):
 
     def _calc_seasons(self, var, month_labels, do_total=False):
         """Given same NetCDF4 Variable used to initialize object and a list of
-        tuples defining seasons, return average for each season over entire 
-        analysis period.
+        tuples defining seasons, return the average over the analysis period of
+        the mean or total for each season.
 
         The first axis of the answer will always correspond to the entries in
         month_labels. For example, with month_labels = [(12,2), (6,8)],
@@ -282,11 +303,13 @@ class Climatology(object):
         return self._calc_seasons(var, self._month_intervals, do_total=True)
 
     def mean_seasonal(self, var):
-        """Mean of var for each season, averaged over all years in period. """
+        """Mean of var for each season (in order: DJF, MAM, JJA, SON), averaged 
+        over all years in period. """
         return self._calc_seasons(var, self._season_intervals, do_total=False)
 
     def total_seasonal(self, var):
-        """Total of var for each season, averaged over all years in period. """
+        """Total of var for each season (in order: DJF, MAM, JJA, SON), averaged 
+        over all years in period. """
         return self._calc_seasons(var, self._season_intervals, do_total=True)
 
     def custom_season_mean(self, var, season_start, season_end):
