@@ -394,125 +394,139 @@ class Koppen_Peel07(Koppen):
             d['TemperateDryWinter']
         )
 
-# class Koppen_GFDL(Koppen):
-#     P_thresh_cutoff = 0.7
-#     hemisphere_seasons = True
+class Koppen_GFDL(Koppen):
+    """Koppen classification as defined in previous code. """
+    P_thresh_cutoff = 0.7
+    hemisphere_seasons = True
 
-#     def major(self, d):
-#         # if tMin > 18.0:
-#         #     return Match.Tropical
-#         # elif tMin > -3.0:
-#         #     return Match.Temperate
-#         # elif clim.temperature_max < 10.0:
-#         #     return Match.Polar
-#         # else:
-#         #     return Match.Continental
-#         d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
-#         not_arid = self._not(d['Arid'])
-#         d['Tropical'] = self._and(
-#             self.T_min > 18.0,
-#             not_arid
-#         )
-#         d['Temparate'] = self._and(
-#             self.T_min <= 18.0,
-#             self.T_min > -3.0,
-#             not_arid
-#         )
-#         d['Polar'] = self._and(
-#             self.T_min <= -3.0,
-#             self.T_max < 10.0,
-#             not_arid
-#         )
-#         d['Continental'] = self._and(
-#             self.T_min <= -3.0,
-#             self.T_max >= 10.0,
-#             not_arid 
-#         )
-    
-#     def minor(self, clim):
-#         numWarmMonths = clim.temperature[np.where(clim.temperature > 10.0)].size
-#         if numWarmMonths > 4:
-#             if clim.temperature_max > 22.0:
-#                 return Match.Hot
-#             else:
-#                 return Match.Warm
-#         elif clim.temperature_min < -38.0:
-#             return Match.Severe
-#         else:
-#             return Match.Cold
+    def major(self, d):
+        # if tMin > 18.0:
+        #     return Match.Tropical
+        # elif tMin > -3.0:
+        #     return Match.Temperate
+        # elif clim.temperature_max < 10.0:
+        #     return Match.Polar
+        # else:
+        #     return Match.Continental
+        d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
+        not_arid = self._not(d['Arid'])
+        d['Tropical'] = self._and(
+            self.T_min > 18.0,
+            not_arid
+        )
+        d['Temperate'] = self._and(
+            self.T_min <= 18.0,
+            self.T_min > -3.0,
+            not_arid
+        )
+        d['Polar'] = self._and(
+            self.T_min <= -3.0,
+            self.T_max < 10.0,
+            not_arid
+        )
+        d['Continental'] = self._and(
+            self.T_min <= -3.0,
+            self.T_max >= 10.0,
+            not_arid 
+        )
 
-#     def precip(self, clim):
-#         summerMax = clim.precip_max["summer"]
-#         winterMin = clim.precip_min["winter"]
-#         if summerMax > (10.0*winterMin):
-#             return Match.Monsoon
-#         summerMin = clim.precip_min["summer"]
-#         winterMax = clim.precip_max["winter"]
-#         if (winterMax > 3.0*summerMin) and (summerMin < 30.0):
-#             return Match.Mediterranean
-#         else:
-#             return Match.YearRound
+    def p_Tropical(self, d):
+        # equivalent to Peel07
+        # val = clim.precipitation.min() >= 100.0 - (clim.precipitation.sum()*0.04)
+        # for i in clim.precipitation:
+        #     if i < 60.0:
+        #         if val:
+        #             return "Am"
+        #         else:
+        #             return "Aw"
+        #     else:
+        #         return "Af"
+        val = (self.P_min >= 100.0 - self.P_ann / 25.0)
+        not_rainforest = (self.P_min < 60.0)
+        d['TropicalMonsoon'] = self._and(not_rainforest, val)
+        d['TropicalSavannaDryWinter'] = self._and(not_rainforest, self._not(val))
+        d['TropicalSavannaDrySummer'] = self._not(self.all_true) # category not used
+        d['TropicalRainforest'] = self._not(not_rainforest)
 
-#     def arid(self, clim):
-#         annual_mean = self.annualMeanOf(clim.temperature)
-#         total_precip = clim.precipitation.sum()
-#         precipRatio = (clim.precip_total["spring"] + clim.precip_total["summer"])/total_precip
-#         if precipRatio >= 0.7:
-#             precipOffset = 10.0*annual_mean + 140.0
-#         elif precipRatio >= 0.3:
-#             precipOffset = 10.0*annual_mean + 70.0
-#         else:
-#             precipOffset = 10.0*annual_mean
-#         if total_precip < precipOffset:
-#             return Match.Arid
-#         elif (total_precip >= precipOffset) and (total_precip <= 2.0*precipOffset):
-#             return Match.SemiArid
-#         else:
-#             return Match.Moist
+    def p_Temperate(self, d):
+        # equivalent to Peel07 except "self.P_smin < 30.0"
+        # if summerMax > (10.0*winterMin):
+        #     return Match.Monsoon
+        # if (winterMax > 3.0*summerMin) and (summerMin < 30.0):
+        #     return Match.Mediterranean
+        # else:
+        #     return Match.YearRound
+        # NB labels used above correspond to following letters:
+        # second_letter = {Match.Monsoon : "w", # DryWinter
+        #             Match.Mediterranean : "s", # DrySummer
+        #             Match.YearRound : "f"} # YearRound
+        d['TemperateDryWinter'] = (self.P_smax > 10.0 * self.P_wmin)
+        d['TemperateDrySummer'] = self._and(
+            self.P_wmax > 3.0 * self.P_smin,
+            self.P_smin < 30.0, 
+            and_not=d['TemperateDryWinter']
+        )
+        d['TemperateWithoutDrySeason'] = self._not(
+            d['TemperateDrySummer'], 
+            d['TemperateDryWinter']
+        )
 
-#     def matchArid(self, clim):
-#         arid = self.arid(clim)
-#         major = self.major(clim)
-#         if arid == Match.Arid and (major == Match.Temperate or major == Match.Tropical):
-#             return "BWh"
-#         elif arid == Match.Arid and (major == Match.Continental or major == Match.Polar):
-#             return "BWk"
-#         elif arid == Match.SemiArid and (major == Match.Tropical or major == Match.Temperate):
-#             return "BSh"
-#         elif arid == Match.SemiArid and(major == Match.Continental or major == Match.Polar):
-#             return "BSk"
-#         return None
+    def t_Continental(self, d):
+        # other conventions use n_warm >= 4
+        # if numWarmMonths > 4:
+        #     if clim.temperature_max > 22.0:
+        #         return Match.Hot
+        #     else:
+        #         return Match.Warm
+        # elif clim.temperature_min < -38.0:
+        #     return Match.Severe
+        # else:
+        #     return Match.Cold
+        d['ContinentalHotSummer'] = self._and(
+            self.n_warm > 4.0, 
+            self.T_max > 22.0
+        )
+        d['ContinentalWarmSummer'] = self._and(
+            self.n_warm > 4.0, 
+            self.T_max <= 22.0
+        )
+        d['ContinentalVeryColdWinter'] = self._and(
+            self.n_warm <= 4.0, 
+            self.T_min < -38.0
+        )
+        d['ContinentalColdSummer'] = self._not(
+            d['ContinentalHotSummer'], 
+            d['ContinentalWarmSummer'],
+            d['ContinentalVeryColdWinter']
+        )
 
-#     def matchTropical(self, clim):
-#         val = clim.precipitation.min() >= 100.0 - (clim.precipitation.sum()*0.04)
-#         for i in clim.precipitation:
-#             if i < 60.0:
-#                 if val:
-#                     return "Am"
-#                 else:
-#                     return "Aw"
-#             else:
-#                 return "Af"
+    # Previous logic for Arid class:
+    # if total_precip < precipOffset:
+    #     return Match.Arid
+    # elif (total_precip >= precipOffset) and (total_precip <= 2.0*precipOffset):
+    #     return Match.SemiArid
+    # else:
+    #     return Match.Moist
+    # if arid == Match.Arid and (major == Match.Temperate or major == Match.Tropical):
+    #     return "BWh"
+    # elif arid == Match.Arid and (major == Match.Continental or major == Match.Polar):
+    #     return "BWk"
+    # elif arid == Match.SemiArid and (major == Match.Tropical or major == Match.Temperate):
+    #     return "BSh"
+    # elif arid == Match.SemiArid and(major == Match.Continental or major == Match.Polar):
+    #     return "BSk"
 
-#     def matchContinental(self,clim):
-#         first_letter = {Match.Temperate : "C",
-#                         Match.Continental : "D"}
-#         second_letter = {Match.Monsoon : "w",
-#                          Match.Mediterranean : "s",
-#                          Match.YearRound : "f"}
-#         last_letter = {Match.Hot : "a",
-#                        Match.Warm : "b",
-#                        Match.Cold : "c",
-#                        Match.Severe : "d"}
-#         return first_letter[self.major(clim)] + second_letter[self.precip(clim)] + \
-#                last_letter[self.minor(clim)]
+    def p_Arid(self, d):
+        # precipOffset used above = 5 * self.P_thresh
+        # equivalent to outher two conventions
+        d['AridDesert'] = (self.P_ann < 5.0 * self.P_thresh)
+        d['AridSteppe'] = self._and(
+            self.P_ann >= 5.0 * self.P_thresh,
+            self.P_ann <= 10.0 * self.P_thresh
+        )
 
-#     def makeZones(self,clim):
-#         s = self.matchArid(clim)
-#         if s is not None:
-#             return s
-#         funcs = {Match.Tropical : self.matchTropical,
-#                  Match.Temperate : self.matchContinental,
-#                  Match.Continental : self.matchContinental,
-#                  Match.Polar : self.matchPolar}
-#         return funcs[self.major(clim)](clim)
+    def t_Arid(self, d):
+        # Other conventions use T_ann >/< 18.0
+        # B*h vs B*k in above = (Tropical OR Temperate) vs (Continental OR Polar)
+        d['AridHot'] = (self.T_min > -3.0)
+        d['AridCold'] = (self.T_min <= -3.0)
