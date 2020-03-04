@@ -72,7 +72,7 @@ def prep_pr(file_var_name, ds, args):
     ans = ans * 86400.0 * float(args['pr_conversion_factor'])
     return ans
 
-def calc_koppen_classes(date_range, tas_ds, pr_ds, args=None):
+def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=None):
     """Compute Koppen classes from tas and pr, provided as netCDF Datasets.
 
     Args:
@@ -118,7 +118,23 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, args=None):
     )
     del pr
 
-    koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
+    if convention == 'Peel07':
+        koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
+    else:
+        lats = pr_ds.variables[args['lat_coord']][:]
+        assert np.amax(lats) > 0.0
+        assert np.amin(lats) < 0.0
+        lats = np.expand_dims(lats, axis=1)
+        n_hemisphere_mask = np.broadcast_to((lats >= 0.0), pr_clim.annual.shape)
+        
+        if convention == 'Kottek06':
+            koppen = Koppen.Koppen_Kottek06(tas_clim, pr_clim, 
+                summer_is_apr_sep=n_hemisphere_mask)
+        elif convention == 'GFDL':
+            koppen = Koppen.Koppen_GFDL(tas_clim, pr_clim, 
+                summer_is_apr_sep=n_hemisphere_mask)
+        else:
+            raise ValueError("Unrecognized convention '{}'".format(convention))
     return koppen.make_classes()
 
 # -------------------------------------
@@ -374,6 +390,10 @@ if __name__ == '__main__':
     parser.add_argument('--CASENAME', '-n', type=str,
         default=os.environ.get('CASENAME','')
     )
+    parser.add_argument('--convention', type=str,
+        choices=['Peel07', 'Kottek06', 'GFDL'],
+        default='Peel07'
+    )
     parser.add_argument('--save_nc', action='store_true',
         default=(os.environ.get('save_nc','0') != '0')
     )
@@ -418,7 +438,7 @@ if __name__ == '__main__':
     args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
     args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
 
-    classes = calc_koppen_classes(date_range, tas_ds, pr_ds, args)
+    classes = calc_koppen_classes(date_range, tas_ds, pr_ds, args['convention'], args)
     if args['save_nc']:
         write_nc_output(args['nc_out_path'], classes, pr_ds, args)
     if not args['no_plot']:
