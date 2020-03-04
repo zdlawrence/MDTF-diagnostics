@@ -94,6 +94,7 @@ class Koppen(object):
     below corresponding to a specific convention.
     """
     P_thresh_cutoff = None
+    hemisphere_seasons = False
 
     def __init__(self, tas, pr, summer_is_apr_sep=None):
         """Compute intermediate variables used for Koppen classification.
@@ -113,7 +114,11 @@ class Koppen(object):
         assert sum(apr_sep_mask) == 6
         assert sum(oct_mar_mask) == 6
 
-        if not summer_is_apr_sep:
+        if not summer_is_apr_sep or not self.hemisphere_seasons:
+            if self.hemisphere_seasons:
+                raise Exception(("Need to provide N/S hemisphere information "
+                    "for this convention"))
+            # "summer" = warmer season
             summer_is_apr_sep = (tas.apr_sep >= tas.oct_mar)
         else:
             assert summer_is_apr_sep.shape == pr.annual.shape
@@ -275,6 +280,7 @@ class Koppen_Kottek06(Koppen):
     15 (3): 259–263 (2006); https://doi.org/10.1127%2F0941-2948%2F2006%2F0130. 
     """
     P_thresh_cutoff = 2.0/3.0
+    hemisphere_seasons = True
 
     def major(self, d):
         d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
@@ -332,8 +338,14 @@ class Koppen_Peel07(Koppen):
     """Koppen classification as used in Peel, Finlayson & McMahon, "Updated 
     world map of the Koppen–Geiger climate classification," Hydrol. Earth Syst. 
     Sci. 11 (5): 1633–1644 (2007); https://doi.org/10.5194%2Fhess-11-1633-2007. 
+
+    This is also the convention of Beck et al., "Present and future Koppen-Geiger 
+    climate classification maps at 1-km resolution", Scientific Data. 5: 180214
+    (2018); https://doi.org/10.1038%2Fsdata.2018.214 , which is the source of 
+    the map at https://en.wikipedia.org/wiki/K%C3%B6ppen_climate_classification.
     """
     P_thresh_cutoff = 0.7
+    hemisphere_seasons = False
 
     def major(self, d):
         d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
@@ -361,8 +373,14 @@ class Koppen_Peel07(Koppen):
     def p_Tropical(self, d):
         d['TropicalRainforest'] = (self.P_min >= 60.0)
         p_compare = (self.P_min >= 100.0 - self.P_ann / 25.0)
-        d['TropicalMonsoon'] = self._and(p_compare, and_not=d['TropicalRainforest'])
-        d['TropicalSavannaDryWinter'] = self._and(self._not(p_compare), and_not=d['TropicalRainforest'])
+        d['TropicalMonsoon'] = self._and(
+            p_compare, 
+            and_not=d['TropicalRainforest']
+        )
+        d['TropicalSavannaDryWinter'] = self._and(
+            self._not(p_compare), 
+            and_not=d['TropicalRainforest']
+        )
         d['TropicalSavannaDrySummer'] = self._not(self.all_true) # category not used
 
     def p_Temperate(self, d):
@@ -378,6 +396,7 @@ class Koppen_Peel07(Koppen):
 
 # class Koppen_GFDL(Koppen):
 #     P_thresh_cutoff = 0.7
+#     hemisphere_seasons = True
 
 #     def major(self, d):
 #         # if tMin > 18.0:
