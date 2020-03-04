@@ -1,10 +1,13 @@
+#!/usr/bin/env python
 '''
 Created on Oct 23, 2019
 
 @author: Diyor.Zakirov
 '''
 import os
+import argparse
 import collections
+import operator
 import netCDF4 as nc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,16 +17,17 @@ import cartopy.crs as ccrs
 import Koppen
 import climatology
 
+# ----------------------------
+# processing NetCDF data, computing climatologies and Koppen classes
 
-def prep_taslut(ds, file_var_name):
-    file_ax_names = {'time_coord':'time', 'lat_coord':'lat', 'lon_coord':'lon'}
-    
+def prep_taslut(file_var_name, ds, args):
     var = ds.variables[file_var_name]
     ans = var[:] # copy np.Array
     if len(var.dimensions) == 3:
         pass
     elif len(var.dimensions) == 4:
-        ax4_name = set(var.dimensions).difference(set(file_ax_names.values()))
+        known_axes = set([v for k,v in args.items() if k.endswith('_coord')])
+        ax4_name = set(var.dimensions).difference(known_axes)
         ax4_name = list(ax4_name)[0]
         ax4_pos = var.dimensions.index(ax4_name)
         ax4 = ds.variables[ax4_name]
@@ -51,20 +55,27 @@ def prep_taslut(ds, file_var_name):
         ans = ans - 273.15
     return ans
 
-def prep_pr(ds, file_var_name):
+def prep_pr(file_var_name, ds, args):
     ans = ds.variables[file_var_name][:]
     ans = np.ma.masked_invalid(ans)
     ans = np.ma.masked_less(ans, 0.0)
     
-    ans = ans * 86400.0 # assume flux kg/m2/s (mm/s), convert to mm/day
+    # pr_conversion_factor is a MDTF env var that converts model units to MKS 
+    # flux kg/m2/s (take as equiv to mm/s). Convert that to mm/day here.
+    ans = ans * 86400.0 * float(args['pr_conversion_factor'])
     return ans
 
-def calc_koppen_classes(date_range, tas_ds, pr_ds, landmask_ds=None):
+def calc_koppen_classes(date_range, tas_ds, pr_ds, args=None):
     KoppenAverages = collections.namedtuple('KoppenAverages', 
         ['annual', 'apr_sep', 'oct_mar', 'monthly']
     )
-    tas = prep_taslut(tas_ds, 'tasLut')
-    clim = climatology.Climatology(date_range, 'tasLut', tas_ds, var=tas)
+    if args is None:
+        # assume we're being called interactively
+        args = args_from_envvars(use_environ=False)
+        args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
+        args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+    tas = prep_taslut(args['tas_var'], tas_ds, args)
+    clim = climatology.Climatology(date_range, args['tas_var'], tas_ds, var=tas)
     tas_clim = KoppenAverages(
         annual = clim.mean_annual(tas),
         apr_sep = clim.custom_season_mean(tas, 4, 9),
@@ -73,8 +84,8 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, landmask_ds=None):
     )
     del tas
 
-    pr = prep_pr(pr_ds, 'pr')
-    clim = climatology.Climatology(date_range, 'pr', pr_ds, var=pr)
+    pr = prep_pr(args['pr_var'], pr_ds, args)
+    clim = climatology.Climatology(date_range, args['pr_var'], pr_ds, var=pr)
     pr_clim = KoppenAverages(
         annual = clim.total_annual(pr),
         apr_sep = clim.custom_season_total(pr, 4, 9),
@@ -83,16 +94,18 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, landmask_ds=None):
     )
     del pr
 
-    koppen = Koppen(tas_clim, pr_clim, summer_is_apr_sep=None)
+    koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
     koppen.make_classes()
     return koppen.classes
 
 # -------------------------------------
+# plotting koppen classes
 
 koppen_colors = {
         "Af":  (  0,   0, 255),
         "Am":  (  0, 120, 255),
         "Aw":  ( 70, 170, 250),
+        "As":  ( 70, 170, 250),
         "BWh": (255,   0,   0),
         "BWk": (255, 150, 150),
         "BSh": (245, 165,   0),
@@ -125,23 +138,46 @@ def get_color(i):
     key = Koppen.KoppenClass(i).name
     return tuple([rgb / 255.0 for rgb in koppen_colors[key]])
 
-def munge_ax(ds, bnds_name, shape):
+def munge_ax(ax_name, ds, data_shape):
     # pcolormap wants X, Y to be rectangle bounds (so longer than array being
     # plotted by one entry) and also doesn't automatically broadcast.
-    ax_var = ds.variables[bnds_name][:]
-    if np.ma.is_masked(ax_var):
-        assert np.ma.count_masked(ax_var) == 0
-        ax_var = ax_var.filled()
-    ax = np.append(ax_var[:,0], ax_var[-1,1])
-    # add a new singleton axis along whichever axis (0 or 1) *doesn't* match 
-    # length of ax_var
-    new_ax_pos = 1 - shape.index(ax_var.shape[0])
-    ax = np.expand_dims(ax, axis=new_ax_pos)
-    return np.broadcast_to(ax, (shape[0]+1, shape[1]+1))
+    bnds_name = bounds_name(ax_name, ds)
+    if bnds_name:
+        ax_var = ds.variables[bnds_name][:]
+        if np.ma.is_masked(ax_var):
+            assert np.ma.count_masked(ax_var) == 0
+            ax_var = ax_var.filled()
+        ax_bnds = np.append(ax_var[:,0], ax_var[-1,1])
+    else:
+        # can't find bounds; compute midpoints from scratch
+        ax_var = ds.variables[ax_name][:]
+        if np.ma.is_masked(ax_var):
+            assert np.ma.count_masked(ax_var) == 0
+            ax_var = ax_var.filled()
+        ax_bnds = [(ax_var[i] + ax_var[i+1]) / 2.0 for i in range(len(ax_var)-1)]
+        first_step = abs(ax_var[1] - ax_var[0]) / 2.0
+        last_step = abs(ax_var[-2] - ax_var[-1]) / 2.0
+        ax_bnds.insert(0, ax_var[0] - first_step)
+        ax_bnds.append(ax_var[-1] + last_step)
+        ax_bnds = np.array(ax_bnds)
 
-def koppen_plot(var, ds, output_file=None):
-    lat = munge_ax(ds, 'lat_bnds', var.shape)
-    lon = munge_ax(ds, 'lon_bnds', var.shape)
+    # add a new singleton axis along whichever axis (0 or 1) *doesn't* match 
+    # length of ax_var, then broadcast into that axis 
+    new_ax_pos = 1 - data_shape.index(ax_var.shape[0])
+    ax_bnds = np.expand_dims(ax_bnds, axis=new_ax_pos)
+    return np.broadcast_to(ax_bnds, (data_shape[0]+1, data_shape[1]+1))
+
+def koppen_plot(var, ds, args=None):
+    if args is None:
+        # assume we're being called interactively
+        args = args_from_envvars(use_environ=False)
+        title_str = 'Koppen classes'
+        output_file = None
+    else:
+        title_str = '{CASENAME} Koppen classes, {FIRSTYR}-{LASTYR}'.format(args)
+        output_file = args['ps_out_path']
+    lat = munge_ax(args['lat'], ds, var.shape)
+    lon = munge_ax(args['lon'], ds, var.shape)
     var = np.ma.masked_equal(var, 0)
 
     k_range = range(
@@ -153,8 +189,8 @@ def koppen_plot(var, ds, output_file=None):
         'koppen_colors', color_list, N=len(color_list)
     )
     legend_entries = [
-        Patch(facecolor=get_color(i), edgecolor='k', label=Koppen.KoppenClass(i).name) \
-        for i in k_range
+        Patch(facecolor=get_color(i), edgecolor='k', 
+            label=Koppen.KoppenClass(i).name) for i in k_range
     ]
     for k_cls in ('Cfc', 'Csc', 'Cwc','ET'):
         # pad out shorter legend columns with blank swatches
@@ -162,14 +198,14 @@ def koppen_plot(var, ds, output_file=None):
         legend_entries.insert(idx + 1, Patch(facecolor='w', edgecolor='w', label=''))
 
     fig = plt.figure(figsize=(16, 8))
-    ax = plt.gca(projection=ccrs.PlateCarree(), )
+    ax = plt.gca(projection=ccrs.PlateCarree())
     ax.pcolormesh(lon, lat, var, cmap=c_map, transform=ccrs.PlateCarree())
     ax.coastlines()
     ax.set_global()
     ax_extents = ax.get_extent()
     ax.set_xticks(np.arange(ax_extents[0], ax_extents[1]+1.0, 90.0))
     ax.set_yticks(np.arange(ax_extents[2], ax_extents[3]+1.0, 45.0))
-    ax.set_title('<CASENAME> Koppen classes, <date_range>',fontsize='x-large')
+    ax.set_title(title_str, fontsize='x-large')
     
     # Set legend outside axes: https://stackoverflow.com/a/43439132
     # Don't make a figure legend because that might get cut off when plot is
@@ -185,15 +221,31 @@ def koppen_plot(var, ds, output_file=None):
     pad = 2 * (_leg.borderaxespad + _leg.borderpad) * fontsize
     _leg._legend_box.set_height(_leg.get_bbox_to_anchor().height - pad)
 
-    if output_file is None:
+    if output_file:
+        plt.savefig(output_file, bbox_inches='tight')
+    else:
         # assume we're being called interactively
         plt.show()
-    else:
-        plt.savefig(output_file, bbox_inches='tight')
 
 # -------------------------------------
+# netcdf utilities and output
 
-def copy_axis(ax_name, src_ds, dst_ds, bounds=True):
+def check_nc_names(name, ds):
+    if name in ds.variables:
+        return name
+    # else return name of highest-dimensional Variable in Dataset, under the
+    # assumption that's the variable of interest
+    d = {k:len(v.shape) for k,v in ds.variables.items()}
+    return max(d.items(), key=operator.itemgetter(1))[0]
+
+def bounds_name(ax_name, ds):
+    if hasattr(ds.variables[ax_name], 'bounds'):
+        ax_bnds = ds.variables[ax_name].bounds
+    else:
+        ax_bnds = ax_name + '_bnds'
+    return (ax_bnds if ax_bnds in ds.variables else None)
+
+def copy_nc_axis(ax_name, src_ds, dst_ds):
     """Copy Dimension and associated Variable from one one netCDF4 Dataset to 
     another, since this isn't provided directly by the netCDF4 module. If 
     Based on discussion in https://stackoverflow.com/a/49592545.
@@ -225,33 +277,112 @@ def copy_axis(ax_name, src_ds, dst_ds, bounds=True):
     _copy_dimension(ax_name)
     if ax_name in src_ds.variables:
         _copy_variable(ax_name)
-    if bounds:
-        ax_bnds_name = ax_name+'_bnds'
-        if ax_bnds_name in src_ds.variables:
-            _copy_variable(ax_bnds_name)
-            for dim in src_ds.variables[ax_bnds_name].dimensions:
-                _copy_dimension(dim)
-                if dim in src_ds.variables:
-                    _copy_variable(dim)
+    bnds_name = bounds_name(ax_name, src_ds)
+    if bnds_name:
+        _copy_variable(bnds_name)
+        for dim in src_ds.variables[bnds_name].dimensions:
+            _copy_dimension(dim)
+            if dim in src_ds.variables:
+                _copy_variable(dim)
 
+def write_nc_output(nc_out_path, classes, ds, args=None):
+    if args is None:
+        # assume we're being called interactively
+        args = args_from_envvars(use_environ=False)
+    enum_dict = {cl.name : cl.value for cl in Koppen.KoppenClass}
+    enum_dict['None'] = 0
 
-    tas_ds = nc.Dataset('atmos_cmip.200001-200412.tas.nc', 'r', keepweakref=True)
-    pr_ds = nc.Dataset('atmos_cmip.200001-200412.pr.nc', 'r', keepweakref=True)
-    classes = calc_koppen_classes(date_range, tas_ds, pr_ds)
-    if save_nc:
-        pass
-    koppen_plot(classes, pr_ds)
+    out_ds = nc.Dataset(nc_out_path, 'w', data_model=ds.data_model)
+    copy_nc_axis(args['lat_coord'], ds, out_ds)
+    copy_nc_axis(args['lon_coord'], ds, out_ds)
+    class_var = out_ds.createVariable('Koppen', 
+        'u1', # match NC UBYTE dtype used in classes array
+        dimensions=(args['lat_coord'], args['lon_coord']),
+        fill_value=0 # enum value for masked/missing data
+    )
+    class_var[:] = classes
+    # encode class labels in variable attribute
+    str_ = ' '.join([str(i) for i in enum_dict.values()])
+    class_var.setncattr_string('flag_values', str_)
+    str_ = ' '.join([str(i) for i in enum_dict.keys()])
+    class_var.setncattr_string('flag_meanings', str_)
+    out_ds.close()
 
+# -------------------------------------
+# driver
+
+def args_from_envvars(use_environ=True):
+    names = {
+        'tas_var':'tas', 'pr_var': 'pr', 
+        'pr_conversion_factor':'1',
+        'time_coord':'time', 'lat_coord':'lat', 'lon_coord':'lon'
+    }
+    if use_environ:
+        for k,v in names.items():
+            names[k] = os.environ.get(k, v)
+    return names
 
 if __name__ == '__main__':
-    pass
-    #start = timeit.default_timer()
-    #pool = mp.Pool(mp.cpu_count())
-    #cProfile.run('netcdfToKoppen(1920,1950,1850)')
-    #netcdfToKoppen(1920,1950,1850)
-    #pool.close()
-    #stop = timeit.default_timer()
-    #print("Whole time: ", stop - start)
-    
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--FIRSTYR', '-Y', type=int,
+        default=int(os.environ.get('FIRSTYR', 0))
+    )
+    parser.add_argument('--LASTYR', '-Z', type=int,
+        default=int(os.environ.get('LASTYR', 0))
+    )
+    parser.add_argument('--CASENAME', '-n', type=str,
+        default=os.environ.get('CASENAME','')
+    )
+    parser.add_argument('--save_nc', action='store_true',
+        default=(os.environ.get('save_nc','0') != '0')
+    )
+    parser.add_argument('--no_plot', action='store_false')
+    parser.add_argument('--output', '-o', type=str,
+        default=""
+    )
+    parser.add_argument('--tas', '-t', type=str, default="", dest='tas_path')
+    parser.add_argument('--pr', '-p', type=str, default="", dest='pr_path')
+    args = vars(parser.parse_args())
+    args.update(args_from_envvars())
+    if not args['tas_path']:
+        args['tas_path'] = os.path.join(
+            os.environ.get('DATADIR', '.'), 'mon',
+            '{}.{}.mon.nc'.format(args['CASENAME'], args['tas_var'])
+        )
+    if not args['pr_path']:
+        args['pr_path'] = os.path.join(
+            os.environ.get('DATADIR', '.'), 'mon',
+            '{}.{}.mon.nc'.format(args['CASENAME'], args['pr_var'])
+        )
+    if not args['output']:
+        if 'WK_DIR' in os.environ:
+            args['nc_out_path'] = os.path.join(
+                os.environ['WK_DIR'], 'model', 'netcdf', 'koppen_classes.nc'
+            )
+            args['ps_out_path'] = os.path.join(
+                os.environ['WK_DIR'], 'model', 'PS', 'koppen_classes.eps'
+            )
+        else: 
+            nc_out_path = os.path.join(os.getcwd(), 'koppen_classes.nc')
+            ps_out_path = os.path.join(os.getcwd(), 'koppen_classes.eps')
+    else:
+        (dir_, file_) = os.path.split(args['output'])
+        (file_, _) = os.path.splitext(file_)
+        args['nc_out_path'] = os.path.join(dir_, file_+'.nc')
+        args['ps_out_path'] = os.path.join(dir_, file_+'.eps')
+
+    date_range = (args['FIRSTYR'], args['LASTYR'])
+    tas_ds = nc.Dataset(args['tas_path'], 'r', keepweakref=True)
+    pr_ds = nc.Dataset(args['pr_path'], 'r', keepweakref=True)
+    args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
+    args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+
+    classes = calc_koppen_classes(date_range, tas_ds, pr_ds, args)
+    if args['save_nc']:
+        write_nc_output(args['nc_out_path'], classes, pr_ds, args)
+    if not args['no_plot']:
+        koppen_plot(classes, pr_ds, args)
+
+    tas_ds.close()
+    pr_ds.close()
     
