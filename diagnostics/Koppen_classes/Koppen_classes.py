@@ -98,6 +98,8 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
         args = args_from_envvars(use_environ=False)
         args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
         args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+
+    print('Compute {tas_var} climatology'.format(**args))
     tas = prep_taslut(args['tas_var'], tas_ds, args)
     clim = climatology.Climatology(date_range, args['tas_var'], tas_ds, var=tas)
     tas_clim = KoppenAverages(
@@ -108,6 +110,7 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
     )
     del tas
 
+    print('Compute {pr_var} climatology'.format(**args))
     pr = prep_pr(args['pr_var'], pr_ds, args)
     clim = climatology.Climatology(date_range, args['pr_var'], pr_ds, var=pr)
     pr_clim = KoppenAverages(
@@ -118,6 +121,7 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
     )
     del pr
 
+    print('Computing Koppen classes ({convention} convention)'.format(**args))
     if convention == 'Peel07':
         koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
     else:
@@ -436,14 +440,18 @@ if __name__ == '__main__':
 
     date_range = (args['FIRSTYR'], args['LASTYR'])
     tas_ds = nc.Dataset(args['tas_path'], 'r', keepweakref=True)
-    pr_ds = nc.Dataset(args['pr_path'], 'r', keepweakref=True)
     args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
+    print('Found {tas_var} at {tas_path}'.format(**args))
+    pr_ds = nc.Dataset(args['pr_path'], 'r', keepweakref=True)
     args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+    print('Found {pr_var} at {pr_path}'.format(**args))
 
     classes = calc_koppen_classes(date_range, tas_ds, pr_ds, args['convention'], args)
     if args['save_nc']:
+        print('Writing netcdf file to {nc_out_path}'.format(**args))
         write_nc_output(args['nc_out_path'], classes, pr_ds, args)
     if not args['no_plot']:
+        print('Writing plot to {ps_out_path}'.format(**args))
         koppen_plot(classes, pr_ds, args)
 
     tas_ds.close()
