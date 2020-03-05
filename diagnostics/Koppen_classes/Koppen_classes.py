@@ -313,11 +313,11 @@ def copy_nc_axis(ax_name, src_ds, dst_ds):
         assert var_name in src_ds.variables
         var = src_ds.variables[var_name]
         if var_name not in dst_ds.variables:
-            dst_ds.createVariable(var_name, var.datatype, var.dimensions)
+            new_var = dst_ds.createVariable(var_name, var.datatype, var.dimensions)
             # copy variable attributes first, all at once via dictionary
-            dst_ds[var_name].setncatts(src_ds[var_name].__dict__)
+            new_var.setncatts(var.__dict__)
             # copy data
-            dst_ds[var_name][:] = src_ds[var_name][:]
+            new_var[:] = var[:]
         else:
             # netcdf library doesn't implement deleting variables, so no overwrite
             assert var.shape == dst_ds.variables[var_name].shape
@@ -327,11 +327,11 @@ def copy_nc_axis(ax_name, src_ds, dst_ds):
         _copy_variable(ax_name)
     bnds_name = bounds_name(ax_name, src_ds)
     if bnds_name:
-        _copy_variable(bnds_name)
         for dim in src_ds.variables[bnds_name].dimensions:
             _copy_dimension(dim)
             if dim in src_ds.variables:
                 _copy_variable(dim)
+        _copy_variable(bnds_name)
 
 def write_nc_output(nc_out_path, classes, ds, args=None):
     """Write Koppen classes to a NetCDF file.
@@ -350,6 +350,10 @@ def write_nc_output(nc_out_path, classes, ds, args=None):
     enum_dict['None'] = 0
 
     out_ds = nc.Dataset(nc_out_path, 'w', data_model=ds.data_model)
+    # copy global attributes except those that may be source variable specific
+    global_atts = {k:v for k,v in ds.__dict__.items() \
+        if not k.startswith(('variable', args['pr_var'], args['tas_var']))}
+    out_ds.setncatts(global_atts)
     copy_nc_axis(args['lat_coord'], ds, out_ds)
     copy_nc_axis(args['lon_coord'], ds, out_ds)
     class_var = out_ds.createVariable('Koppen', 
@@ -362,7 +366,7 @@ def write_nc_output(nc_out_path, classes, ds, args=None):
     str_ = ' '.join([str(i) for i in enum_dict.values()])
     class_var.setncattr_string('flag_values', str_)
     str_ = ' '.join([str(i) for i in enum_dict.keys()])
-    class_var.setncattr_string('flag_meanings', str_)
+    class_var.setncattr('flag_meanings', str_)
     out_ds.close()
 
 # -------------------------------------
