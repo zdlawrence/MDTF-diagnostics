@@ -171,6 +171,14 @@ class Koppen(object):
         )
         self.latlon_shape = pr.annual.shape
         self.all_true = np.full(self.latlon_shape, True, dtype=np.bool)
+        self.classes = None
+
+    def __call__(self, *args, **kwargs):
+        # shortcut to return classification
+        if not hasattr(self, 'classes') or self.classes is None:
+            return self.make_classes()
+        else:
+            return self.classes
 
     def p_thresh(self, pr, summer_is_apr_sep):
         p_summer = np.ma.where(summer_is_apr_sep, pr.apr_sep, pr.oct_mar)
@@ -269,7 +277,7 @@ class Koppen(object):
             to the values in the KoppenClass enum (eg. KoppenClass['Csc'].value). 
             Entries of 0 correspond to masked, missing or invalid data.
         """
-        classes = np.zeros(self.latlon_shape, dtype=np.ubyte) # maps onto netcdf UBYTE
+        self.classes = np.zeros(self.latlon_shape, dtype=np.ubyte) # maps onto netcdf UBYTE
         d = dict()
         # split each criterion into its own function, to make it clear where
         # conventions (child classes) differ.
@@ -288,9 +296,9 @@ class Koppen(object):
         for label in self.KoppenLabels:
             for maj, p_name, t_name, code in label.iter_label_codes():
                 mask = self._and(d[maj], d[maj+p_name], d[maj+t_name])
-                classes[mask] = self.KoppenClass[code].value
-        classes[self.input_mask] = 0
-        return classes
+                self.classes[mask] = self.KoppenClass[code].value
+        self.classes[self.input_mask] = 0
+        return self.classes
 
 
 class Koppen_Kottek06(Koppen):

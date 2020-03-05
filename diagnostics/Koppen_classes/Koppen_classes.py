@@ -139,7 +139,8 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
                 summer_is_apr_sep=n_hemisphere_mask)
         else:
             raise ValueError("Unrecognized convention '{}'".format(convention))
-    return koppen.make_classes()
+    _ = koppen.make_classes()
+    return koppen
 
 # -------------------------------------
 # plotting koppen classes
@@ -177,9 +178,8 @@ koppen_colors = {
         "ET":  (178, 178, 178),
         "EF":  (104, 104, 104)
     }
-def get_color(i):
-    key = Koppen.KoppenClass(i).name
-    return tuple([rgb / 255.0 for rgb in koppen_colors[key]])
+def get_color(name):
+    return tuple([rgb / 255.0 for rgb in koppen_colors[name]])
 
 def munge_ax(ax_name, ds, data_shape):
     """Convert Dataset axes into a format accepted by 
@@ -212,11 +212,11 @@ def munge_ax(ax_name, ds, data_shape):
     ax_bnds = np.expand_dims(ax_bnds, axis=new_ax_pos)
     return np.broadcast_to(ax_bnds, (data_shape[0]+1, data_shape[1]+1))
 
-def koppen_plot(var, ds, args=None):
+def koppen_plot(koppen_obj, ds, args=None):
     """Plot Koppen classes with legend, using colors defined above.
 
     Args:
-        var: (numpy Array) output of calc_koppen_classes().
+        koppen_obj: (instance of Koppen) output of calc_koppen_classes().
         ds: (netCDF4 Dataset) Dataset containing lat/lon axis information.
         args: (dict, optional) Config options set if this is being called from
             the command-line or the MDTF diagnostics framework.
@@ -227,21 +227,22 @@ def koppen_plot(var, ds, args=None):
         title_str = 'Koppen classes'
     else:
         title_str = '{CASENAME} Koppen classes, {FIRSTYR}-{LASTYR}'.format(**args)
+    var = np.ma.masked_equal(koppen_obj.classes, 0)
     lat = munge_ax(args['lat_coord'], ds, var.shape)
     lon = munge_ax(args['lon_coord'], ds, var.shape)
-    var = np.ma.masked_equal(var, 0)
 
     k_range = range(
-        min(Koppen.KoppenClass).value, 
-        max(Koppen.KoppenClass).value + 1
+        min(koppen_obj.KoppenClass).value, 
+        max(koppen_obj.KoppenClass).value + 1
     )
-    color_list = [get_color(i) for i in k_range]
+
+    color_list = [get_color(cl.name) for cl in koppen_obj.KoppenClass]
     c_map = LinearSegmentedColormap.from_list(
         'koppen_colors', color_list, N=len(color_list)
     )
     legend_entries = [
         Patch(facecolor=get_color(i), edgecolor='k', 
-            label=Koppen.KoppenClass(i).name) for i in k_range
+            label=koppen_obj.KoppenClass(i).name) for i in k_range
     ]
     for k_cls in ('Cfc', 'Csc', 'Cwc','ET'):
         # pad out shorter legend columns with blank swatches
@@ -335,12 +336,12 @@ def copy_nc_axis(ax_name, src_ds, dst_ds):
                 _copy_variable(dim)
         _copy_variable(bnds_name)
 
-def write_nc_output(nc_out_path, classes, ds, args=None):
+def write_nc_output(nc_out_path, koppen_obj, ds, args=None):
     """Write Koppen classes to a NetCDF file.
 
     Args:
         nc_out_path: (str) Destination path.
-        classes: (numpy Array) output of calc_koppen_classes().
+        koppen_obj: (instance of Koppen) output of calc_koppen_classes().
         ds: (netCDF4 Dataset) Dataset containing lat/lon axis information.
         args: (dict, optional) Config options set if this is being called from
             the command-line or the MDTF diagnostics framework.
@@ -348,7 +349,7 @@ def write_nc_output(nc_out_path, classes, ds, args=None):
     if args is None:
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)
-    enum_dict = {cl.name : cl.value for cl in Koppen.KoppenClass}
+    enum_dict = {cl.name : cl.value for cl in koppen_obj.KoppenClass}
     enum_dict['None'] = 0
 
     out_ds = nc.Dataset(nc_out_path, 'w', data_model=ds.data_model)
@@ -363,7 +364,7 @@ def write_nc_output(nc_out_path, classes, ds, args=None):
         dimensions=(args['lat_coord'], args['lon_coord']),
         fill_value=0 # enum value for masked/missing data
     )
-    class_var[:] = classes
+    class_var[:] = koppen_obj.classes
     # encode class labels in variable attribute
     str_ = ' '.join([str(i) for i in enum_dict.values()])
     class_var.setncattr_string('flag_values', str_)
@@ -446,13 +447,13 @@ if __name__ == '__main__':
     args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
     print('Found {pr_var} at {pr_path}'.format(**args))
 
-    classes = calc_koppen_classes(date_range, tas_ds, pr_ds, args['convention'], args)
+    koppen = calc_koppen_classes(date_range, tas_ds, pr_ds, args['convention'], args)
     if args['save_nc']:
         print('Writing netcdf file to {nc_out_path}'.format(**args))
-        write_nc_output(args['nc_out_path'], classes, pr_ds, args)
+        write_nc_output(args['nc_out_path'], koppen, pr_ds, args)
     if not args['no_plot']:
         print('Writing plot to {ps_out_path}'.format(**args))
-        koppen_plot(classes, pr_ds, args)
+        koppen_plot(koppen, pr_ds, args)
 
     tas_ds.close()
     pr_ds.close()
