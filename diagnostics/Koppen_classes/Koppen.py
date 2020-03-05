@@ -2,11 +2,23 @@ import collections
 import enum
 import numpy as np
 
-KoppenTuple = collections.namedtuple(
-    'KoppenTuple', 
-    ['major','minor_p','minor_t']
-)
-KoppenLabels = [
+class KoppenTuple(
+    collections.namedtuple('KoppenTuple', ['major','minor_p','minor_t'])
+):
+    # add convenience methods for looping through all values
+    def iter_codes(self):
+        for maj in self.major.values():
+            for p in self.minor_p.values():
+                for t in self.minor_t.values():
+                    yield maj + p + t
+
+    def iter_label_codes(self):
+        for maj, code in self.major.items():
+            for p_name, p_code in self.minor_p.items():
+                for t_name, t_code in self.minor_t.items():
+                    yield (maj, p_name, t_name, code + p_code + t_code)
+
+fullKoppenLabels = [
     KoppenTuple(
         major = {'Tropical': 'A'},
         minor_p = {
@@ -64,37 +76,46 @@ KoppenLabels = [
         }
     )
 ]
-# sort above alphabetically by letter to ensure code always maps to same integer
-KoppenLabels = [
-    KoppenTuple(
-        major=kc.major,
-        minor_p=collections.OrderedDict(
-            sorted(kc.minor_p.items(), key=lambda t: t[1])
-        ),
-        minor_t=collections.OrderedDict(
-            sorted(kc.minor_t.items(), key=lambda t: t[1])
-        )
-    ) for kc in KoppenLabels
-]
-# Generate Enum mapping integers used to label output to corresponding 
-# Koppen codes (eg "Csc").
-KoppenClass = enum.IntEnum(
-    'KoppenClass', 
-    [
-        maj + p + t \
-        for label in KoppenLabels for maj in label.major.values() \
-        for p in label.minor_p.values() for t in label.minor_t.values()
-    ],
-    start=1
-)
+
+def sort_Koppen_tuples(k_tuple_list):
+    """Sort entries in KoppenTuples alphabetically, by code letter, to ensure 
+    the Koppen code always maps to same integer in Enum.
+    """
+    # OrderedDicts are default in new versions of python, but let's not take
+    # chances: convert to OrderedDict explicitly
+    return [
+        KoppenTuple(
+            major=kc.major,
+            minor_p=collections.OrderedDict(
+                sorted(kc.minor_p.items(), key=lambda t: t[1])
+            ),
+            minor_t=collections.OrderedDict(
+                sorted(kc.minor_t.items(), key=lambda t: t[1])
+            )
+        ) for kc in k_tuple_list
+    ]
+
+def make_Koppen_Enum(enum_name, k_tuple_list):
+    """Generate Enum which maps Koppen codes (eg "Csc") to integers used to 
+    label classes in the output np.Array. 
+    """
+    return enum.IntEnum(
+        enum_name, 
+        [code for label in k_tuple_list for code in label.iter_codes()],
+        start=1 # reserve enum==0 for masked/ocean areas
+    )
+
 
 class Koppen(object):
     """Parent class containing common logic for different conventions used for
     Koppen classes. Can't be used directly; instead use one of the child classes
     below corresponding to a specific convention.
     """
+    # following must be set by child classes
     P_thresh_cutoff = None
-    hemisphere_seasons = False
+    hemisphere_seasons = None
+    KoppenLabels = None
+    KoppenClass = None
 
     def __init__(self, tas, pr, summer_is_apr_sep=None):
         """Compute intermediate variables used for Koppen classification.
@@ -264,12 +285,10 @@ class Koppen(object):
 
         self.p_Continental(d)
         self.t_Temperate(d)
-        for label in KoppenLabels:
-            for maj, code in label.major.items():
-                for p_name, p_code in label.minor_p.items():
-                    for t_name, t_code in label.minor_t.items():
-                        mask = self._and(d[maj], d[maj+p_name], d[maj+t_name])
-                        classes[mask] = KoppenClass[code + p_code + t_code].value
+        for label in self.KoppenLabels:
+            for maj, p_name, t_name, code in label.iter_label_codes():
+                mask = self._and(d[maj], d[maj+p_name], d[maj+t_name])
+                classes[mask] = self.KoppenClass[code].value
         classes[self.input_mask] = 0
         return classes
 
@@ -281,6 +300,8 @@ class Koppen_Kottek06(Koppen):
     """
     P_thresh_cutoff = 2.0/3.0
     hemisphere_seasons = True
+    KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
+    KoppenClass = make_Koppen_Enum('KoppenClass', KoppenLabels)
 
     def major(self, d):
         d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
@@ -346,6 +367,8 @@ class Koppen_Peel07(Koppen):
     """
     P_thresh_cutoff = 0.7
     hemisphere_seasons = False
+    KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
+    KoppenClass = make_Koppen_Enum('KoppenClass', KoppenLabels)
 
     def major(self, d):
         d['Arid'] = (self.P_ann < 10.0 * self.P_thresh)
@@ -398,6 +421,8 @@ class Koppen_GFDL(Koppen):
     """Koppen classification as defined in previous code. """
     P_thresh_cutoff = 0.7
     hemisphere_seasons = True
+    KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
+    KoppenClass = make_Koppen_Enum('KoppenClass', KoppenLabels)
 
     def major(self, d):
         # if tMin > 18.0:
