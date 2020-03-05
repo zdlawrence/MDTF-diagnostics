@@ -221,12 +221,10 @@ def koppen_plot(var, ds, args=None):
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)
         title_str = 'Koppen classes'
-        output_file = None
     else:
-        title_str = '{CASENAME} Koppen classes, {FIRSTYR}-{LASTYR}'.format(args)
-        output_file = args['ps_out_path']
-    lat = munge_ax(args['lat'], ds, var.shape)
-    lon = munge_ax(args['lon'], ds, var.shape)
+        title_str = '{CASENAME} Koppen classes, {FIRSTYR}-{LASTYR}'.format(**args)
+    lat = munge_ax(args['lat_coord'], ds, var.shape)
+    lon = munge_ax(args['lon_coord'], ds, var.shape)
     var = np.ma.masked_equal(var, 0)
 
     k_range = range(
@@ -270,8 +268,8 @@ def koppen_plot(var, ds, args=None):
     pad = 2 * (_leg.borderaxespad + _leg.borderpad) * fontsize
     _leg._legend_box.set_height(_leg.get_bbox_to_anchor().height - pad)
 
-    if output_file:
-        plt.savefig(output_file, bbox_inches='tight')
+    if 'ps_out_path' in args:
+        plt.savefig(args['ps_out_path'], bbox_inches='tight')
     else:
         # assume we're being called interactively
         plt.show()
@@ -401,7 +399,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_nc', action='store_true',
         default=(os.environ.get('save_nc','0') != '0')
     )
-    parser.add_argument('--no_plot', action='store_false')
+    parser.add_argument('--no_plot', action='store_true')
     parser.add_argument('--output', '-o', type=str,
         default=""
     )
@@ -412,12 +410,12 @@ if __name__ == '__main__':
     if not args['tas_path']:
         args['tas_path'] = os.path.join(
             os.environ.get('DATADIR', '.'), 'mon',
-            '{}.{}.mon.nc'.format(args['CASENAME'], args['tas_var'])
+            '{CASENAME}.{tas_var}.mon.nc'.format(**args)
         )
     if not args['pr_path']:
         args['pr_path'] = os.path.join(
             os.environ.get('DATADIR', '.'), 'mon',
-            '{}.{}.mon.nc'.format(args['CASENAME'], args['pr_var'])
+            '{CASENAME}.{pr_var}.mon.nc'.format(**args)
         )
     if not args['output']:
         if 'WK_DIR' in os.environ:
