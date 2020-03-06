@@ -112,6 +112,7 @@ class Koppen(object):
     below corresponding to a specific convention.
     """
     # following must be set by child classes
+    polar_Tmin_cutoff=None
     P_thresh_cutoff = None
     hemisphere_seasons = None
     KoppenLabels = None
@@ -306,6 +307,7 @@ class Koppen_Kottek06(Koppen):
     Koppen-Geiger climate classification updated", Meteorologische Zeitschrift. 
     15 (3): 259–263 (2006); https://doi.org/10.1127%2F0941-2948%2F2006%2F0130. 
     """
+    polar_Tmin_cutoff = -3.0
     P_thresh_cutoff = 2.0/3.0
     hemisphere_seasons = True
     KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
@@ -323,12 +325,12 @@ class Koppen_Kottek06(Koppen):
             not_arid_or_polar
         )
         d['Temperate'] = self._and(
-            self.T_min > -3.0, 
+            self.T_min > self.polar_Tmin_cutoff, 
             self.T_min < 18.0, 
             not_arid_or_polar
         )
         d['Continental'] = self._and(
-            self.T_min <= -3.0, 
+            self.T_min <= self.polar_Tmin_cutoff, 
             not_arid_or_polar
         )
 
@@ -373,6 +375,7 @@ class Koppen_Peel07(Koppen):
     (2018); https://doi.org/10.1038%2Fsdata.2018.214 , which is the source of 
     the map at https://en.wikipedia.org/wiki/K%C3%B6ppen_climate_classification.
     """
+    polar_Tmin_cutoff = 0.0
     P_thresh_cutoff = 0.7
     hemisphere_seasons = False
     KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
@@ -388,12 +391,12 @@ class Koppen_Peel07(Koppen):
         d['Temperate'] = self._and(
             self.T_max > 10.0, 
             self.T_min < 18.0, 
-            self.T_min >= 0.0, 
+            self.T_min >= self.polar_Tmin_cutoff, 
             not_arid
         )
         d['Continental'] = self._and(
             self.T_max > 10.0, 
-            self.T_min < 0.0, 
+            self.T_min < self.polar_Tmin_cutoff, 
             not_arid
         )
         d['Polar'] = self._and(
@@ -427,6 +430,7 @@ class Koppen_Peel07(Koppen):
 
 class Koppen_GFDL(Koppen):
     """Koppen classification as defined in previous code. """
+    polar_Tmin_cutoff = -3.0
     P_thresh_cutoff = 0.7
     hemisphere_seasons = True
     KoppenLabels = sort_Koppen_tuples(fullKoppenLabels)
@@ -449,16 +453,16 @@ class Koppen_GFDL(Koppen):
         )
         d['Temperate'] = self._and(
             self.T_min <= 18.0,
-            self.T_min > -3.0,
+            self.T_min > self.polar_Tmin_cutoff,
             not_arid
         )
         d['Polar'] = self._and(
-            self.T_min <= -3.0,
+            self.T_min <= self.polar_Tmin_cutoff,
             self.T_max < 10.0,
             not_arid
         )
         d['Continental'] = self._and(
-            self.T_min <= -3.0,
+            self.T_min <= self.polar_Tmin_cutoff,
             self.T_max >= 10.0,
             not_arid 
         )
@@ -561,5 +565,5 @@ class Koppen_GFDL(Koppen):
     def t_Arid(self, d):
         # Other conventions use T_ann >/< 18.0
         # B*h vs B*k in above = (Tropical OR Temperate) vs (Continental OR Polar)
-        d['AridHot'] = (self.T_min > -3.0)
-        d['AridCold'] = (self.T_min <= -3.0)
+        d['AridHot'] = (self.T_min > self.polar_Tmin_cutoff)
+        d['AridCold'] = (self.T_min <= self.polar_Tmin_cutoff)
