@@ -5,7 +5,7 @@ from matplotlib.patches import Patch
 from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 
-koppen_colors = {
+Peel07_colors = {
         "Af":  (  0,   0, 255),
         "Am":  (  0, 120, 255),
         "Aw":  ( 70, 170, 250),
@@ -38,8 +38,9 @@ koppen_colors = {
         "ET":  (178, 178, 178),
         "EF":  (104, 104, 104)
     }
-def get_color(name):
-    return tuple([rgb / 255.0 for rgb in koppen_colors[name]])
+
+def get_color(k_class, lookup_table=Peel07_colors):
+    return tuple([rgb / 255.0 for rgb in lookup_table[k_class]])
 
 def bounds_name(ax_name, ds):
     if hasattr(ds.variables[ax_name], 'bounds'):
@@ -100,19 +101,14 @@ def koppen_plot(koppen_obj, ds, args=None):
     lat = munge_ax(args['lat_coord'], ds, var.shape)
     lon = munge_ax(args['lon_coord'], ds, var.shape)
 
-    k_range = range(
-        min(koppen_obj.KoppenClass).value, 
-        max(koppen_obj.KoppenClass).value + 1
-    )
-
     color_list = [get_color(cl.name) for cl in koppen_obj.KoppenClass]
     c_map = LinearSegmentedColormap.from_list(
         'koppen_colors', color_list, N=len(color_list)
     )
     legend_entries = [
-        Patch(facecolor=get_color(i), edgecolor='k', 
-            label=koppen_obj.KoppenClass(i).name) for i in k_range
-    ]
+        Patch(facecolor=get_color(cl.name), edgecolor='k', label=cl.name) \
+            for cl in koppen_obj.KoppenClass
+        ]
     for k_cls in ('Cfc', 'Csc', 'Cwc','ET'):
         # pad out shorter legend columns with blank swatches
         idx = [p.get_label() for p in legend_entries].index(k_cls)
