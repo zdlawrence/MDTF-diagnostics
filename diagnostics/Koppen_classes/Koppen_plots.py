@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
+import nc_utils
 
 Peel07_colors = {
         "Af":  (  0,   0, 255),
@@ -42,31 +43,18 @@ Peel07_colors = {
 def get_color(k_class, lookup_table=Peel07_colors):
     return tuple([rgb / 255.0 for rgb in lookup_table[k_class]])
 
-def bounds_name(ax_name, ds):
-    if hasattr(ds.variables[ax_name], 'bounds'):
-        ax_bnds = ds.variables[ax_name].bounds
-    else:
-        ax_bnds = ax_name + '_bnds'
-    return (ax_bnds if ax_bnds in ds.variables else None)
-
 def munge_ax(ax_name, ds, data_shape):
     """Convert Dataset axes into a format accepted by 
     matplotlib.pyplot.pcolormap. """
     # pcolormap wants X, Y to be rectangle bounds (so longer than array being
     # plotted by one entry) and also doesn't automatically broadcast.
-    bnds_name = bounds_name(ax_name, ds)
+    bnds_name = nc_utils.bounds_name(ax_name, ds)
     if bnds_name:
-        ax_var = ds.variables[bnds_name][:]
-        if np.ma.is_masked(ax_var):
-            assert np.ma.count_masked(ax_var) == 0
-            ax_var = ax_var.filled()
+        ax_var = nc_utils.unmask_axis(ds.variables[bnds_name])
         ax_bnds = np.append(ax_var[:,0], ax_var[-1,1])
     else:
         # can't find bounds; compute midpoints from scratch
-        ax_var = ds.variables[ax_name][:]
-        if np.ma.is_masked(ax_var):
-            assert np.ma.count_masked(ax_var) == 0
-            ax_var = ax_var.filled()
+        ax_var = nc_utils.unmask_axis(ds.variables[ax_name])
         ax_bnds = [(ax_var[i] + ax_var[i+1]) / 2.0 for i in range(len(ax_var)-1)]
         first_step = abs(ax_var[1] - ax_var[0]) / 2.0
         last_step = abs(ax_var[-2] - ax_var[-1]) / 2.0

@@ -11,9 +11,9 @@ koppen_plot() and write_nc_output().
 import os
 import argparse
 import collections
-import operator
 import netCDF4 as nc
 import numpy as np
+import nc_utils
 import climatology
 import Koppen
 import Koppen_plots as plots
@@ -93,8 +93,8 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, args_or_conv=None):
     if not isinstance(args_or_conv, dict):
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)
-        args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
-        args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+        args['tas_var'] = nc_utils.check_dependent_var_name(args['tas_var'], tas_ds)
+        args['pr_var'] = nc_utils.check_dependent_var_name(args['pr_var'], pr_ds)
         convention = (args_or_conv if isinstance(args_or_conv, str) else 'Peel07')
     else:
         args = args_or_conv
@@ -144,54 +144,7 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, args_or_conv=None):
     return koppen
 
 # -------------------------------------
-# netcdf utilities and output
-
-def check_nc_names(name, ds):
-    if name in ds.variables:
-        return name
-    # else return name of highest-dimensional Variable in Dataset, under the
-    # assumption that's the variable of interest
-    d = {k:len(v.shape) for k,v in ds.variables.items()}
-    return max(d.items(), key=operator.itemgetter(1))[0]
-
-def copy_nc_axis(ax_name, src_ds, dst_ds):
-    """Copy Dimension and associated Variable(s) from one one netCDF4 Dataset to 
-    another. Based on discussion in https://stackoverflow.com/a/49592545.
-    """
-    def _copy_dimension(dim_name):
-        assert dim_name in src_ds.dimensions
-        dim = src_ds.dimensions[dim_name]
-        if dim_name not in dst_ds.dimensions:
-            dst_ds.createDimension(
-                dim_name, (dim.size if not dim.isunlimited() else None)
-            )
-        else:
-            # netcdf library doesn't implement deleting dimensions, so no overwrite
-            assert dim.size == dst_ds.dimensions[dim_name].size
-
-    def _copy_variable(var_name):
-        assert var_name in src_ds.variables
-        var = src_ds.variables[var_name]
-        if var_name not in dst_ds.variables:
-            new_var = dst_ds.createVariable(var_name, var.datatype, var.dimensions)
-            # copy variable attributes first, all at once via dictionary
-            new_var.setncatts(var.__dict__)
-            # copy data
-            new_var[:] = var[:]
-        else:
-            # netcdf library doesn't implement deleting variables, so no overwrite
-            assert var.shape == dst_ds.variables[var_name].shape
-
-    _copy_dimension(ax_name)
-    if ax_name in src_ds.variables:
-        _copy_variable(ax_name)
-    bnds_name = plots.bounds_name(ax_name, src_ds)
-    if bnds_name:
-        for dim in src_ds.variables[bnds_name].dimensions:
-            _copy_dimension(dim)
-            if dim in src_ds.variables:
-                _copy_variable(dim)
-        _copy_variable(bnds_name)
+# netcdf output
 
 def write_nc_output(nc_out_path, koppen_obj, ds, args=None):
     """Write Koppen classes to a NetCDF file.
@@ -214,8 +167,8 @@ def write_nc_output(nc_out_path, koppen_obj, ds, args=None):
     global_atts = {k:v for k,v in ds.__dict__.items() \
         if not k.startswith(('variable', args['pr_var'], args['tas_var']))}
     out_ds.setncatts(global_atts)
-    copy_nc_axis(args['lat_coord'], ds, out_ds)
-    copy_nc_axis(args['lon_coord'], ds, out_ds)
+    nc_utils.copy_nc_axis(args['lat_coord'], ds, out_ds)
+    nc_utils.copy_nc_axis(args['lon_coord'], ds, out_ds)
     class_var = out_ds.createVariable('Koppen', 
         'u1', # match NC UBYTE dtype used in classes array
         dimensions=(args['lat_coord'], args['lon_coord']),
@@ -298,10 +251,10 @@ if __name__ == '__main__':
 
     date_range = (args['FIRSTYR'], args['LASTYR'])
     tas_ds = nc.Dataset(args['tas_path'], 'r', keepweakref=True)
-    args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
+    args['tas_var'] = nc_utils.check_dependent_var_name(args['tas_var'], tas_ds)
     print('Found {tas_var} at {tas_path}'.format(**args))
     pr_ds = nc.Dataset(args['pr_path'], 'r', keepweakref=True)
-    args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+    args['pr_var'] = nc_utils.check_dependent_var_name(args['pr_var'], pr_ds)
     print('Found {pr_var} at {pr_path}'.format(**args))
 
     koppen = calc_koppen_classes(date_range, tas_ds, pr_ds, args)
