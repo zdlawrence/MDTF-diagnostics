@@ -69,7 +69,7 @@ def prep_pr(file_var_name, ds, args):
     ans = ans * 86400.0 * float(args['pr_conversion_factor'])
     return ans
 
-def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=None):
+def calc_koppen_classes(date_range, tas_ds, pr_ds, args_or_conv=None):
     """Compute Koppen classes from tas and pr, provided as netCDF Datasets.
 
     Args:
@@ -90,11 +90,15 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
     KoppenAverages = collections.namedtuple('KoppenAverages', 
         ['annual', 'apr_sep', 'oct_mar', 'monthly']
     )
-    if args is None:
+    if not isinstance(args_or_conv, dict):
         # assume we're being called interactively
         args = args_from_envvars(use_environ=False)
         args['tas_var'] = check_nc_names(args['tas_var'], tas_ds)
         args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
+        convention = (args_or_conv if isinstance(args_or_conv, str) else 'Peel07')
+    else:
+        args = args_or_conv
+        convention = args.get('convention', 'Peel07')
 
     print('Compute {tas_var} climatology'.format(**args))
     tas = prep_taslut(args['tas_var'], tas_ds, args)
@@ -118,7 +122,7 @@ def calc_koppen_classes(date_range, tas_ds, pr_ds, convention='Peel07', args=Non
     )
     del pr
 
-    print('Computing Koppen classes ({convention} convention)'.format(**args))
+    print('Computing Koppen classes ({} convention)'.format(convention))
     if convention == 'Peel07':
         koppen = Koppen.Koppen_Peel07(tas_clim, pr_clim, summer_is_apr_sep=None)
     else:
@@ -300,7 +304,7 @@ if __name__ == '__main__':
     args['pr_var'] = check_nc_names(args['pr_var'], pr_ds)
     print('Found {pr_var} at {pr_path}'.format(**args))
 
-    koppen = calc_koppen_classes(date_range, tas_ds, pr_ds, args['convention'], args)
+    koppen = calc_koppen_classes(date_range, tas_ds, pr_ds, args)
     if args['save_nc']:
         print('Writing netcdf file to {nc_out_path}'.format(**args))
         write_nc_output(args['nc_out_path'], koppen, pr_ds, args)
