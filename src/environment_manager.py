@@ -246,10 +246,10 @@ class VirtualenvEnvironmentManager(EnvironmentManager):
         pass 
 
     def set_pod_env(self, pod):
-        keys = [s.lower() for s in pod.required_programs]
-        if ('r' in keys) or ('rscript' in keys):
+        langs = [s.lower() for s in pod.runtime_requirements.keys()]
+        if ('r' in langs) or ('rscript' in langs):
             pod.env = 'r_' + pod.name
-        elif 'ncl' in keys:
+        elif 'ncl' in langs:
             pod.env = 'ncl'
         else:
             pod.env = 'py_' + pod.name
@@ -275,6 +275,8 @@ class VirtualenvEnvironmentManager(EnvironmentManager):
 
 class CondaEnvironmentManager(EnvironmentManager):
     # Use Anaconda to switch execution environments.
+    env_name_prefix = '_MDTF-' # our envs start with this string to avoid conflicts
+
     def __init__(self, verbose=0):
         super(CondaEnvironmentManager, self).__init__(verbose)
 
@@ -327,12 +329,11 @@ class CondaEnvironmentManager(EnvironmentManager):
             #self._call_conda_create(env_name)
 
     def _call_conda_create(self, env_name):
-        prefix = '_MDTF-'
-        if not env_name or env_name == prefix:
-            short_name = 'base'
+        if env_name.startswith(self.env_name_prefix):
+            short_name = env_name[(len(self.env_name_prefix)+1):]
         else:
-            short_name = env_name[(len(prefix)+1):]
-        path = '{}/src/conda_env_{}.yml'.format(self.code_root, short_name)
+            short_name = env_name
+        path = '{}/env_{}.yml'.format(self.conda_dir, short_name)
         if not os.path.exists(path):
             print("Can't find {}".format(path))
         else:
@@ -362,13 +363,20 @@ class CondaEnvironmentManager(EnvironmentManager):
         pass 
 
     def set_pod_env(self, pod):
-        keys = [s.lower() for s in pod.required_programs]
-        if ('r' in keys) or ('rscript' in keys):
-            pod.env = '_MDTF-diagnostics-R'
-        elif 'ncl' in keys:
-            pod.env = '_MDTF-diagnostics-NCL'
+        if pod.name in self.env_list:
+            # env created specifically for this POD
+            pod.env = self.env_name_prefix + pod.name
         else:
-            pod.env = '_MDTF-diagnostics-python'
+            langs = [s.lower() for s in pod.runtime_requirements.keys()]
+            if ('r' in langs) or ('rscript' in langs):
+                pod.env = self.env_name_prefix + 'R_base'
+            elif 'ncl' in langs:
+                pod.env = self.env_name_prefix + 'NCL_base'
+            elif 'python' in langs:
+                pod.env = self.env_name_prefix + 'python_base'
+            else:
+                print("Can't find environment providing {}".format(
+                    pod.runtime_requirements))
 
     def activate_env_commands(self, env_name):
         """Source conda_init.sh to set things that aren't set b/c we aren't 
