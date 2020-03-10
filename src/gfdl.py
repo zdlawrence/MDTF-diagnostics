@@ -142,14 +142,14 @@ class GfdlvirtualenvEnvironmentManager(VirtualenvEnvironmentManager):
 
     # manual-coded logic like this is not scalable
     def set_pod_env(self, pod):
-        keys = [s.lower() for s in pod.required_programs]
+        langs = [s.lower() for s in pod.runtime_requirements.keys()]
         if pod.name == 'convective_transition_diag':
             pod.env = 'py_convective_transition_diag'
         elif pod.name == 'MJO_suite':
             pod.env = 'ncl_MJO_suite'
-        elif ('r' in keys) or ('rscript' in keys):
+        elif ('r' in langs) or ('rscript' in langs):
             pod.env = 'r_default'
-        elif 'ncl' in keys:
+        elif 'ncl' in langs:
             pod.env = 'ncl'
         else:
             pod.env = 'py_default'
