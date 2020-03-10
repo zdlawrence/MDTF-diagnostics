@@ -10,8 +10,10 @@
     "long_name" : "Coupling between Soil Moisture and EvapoTranspiration",
     "realm" : ["atmos", "land"],
     "description" : "Coupling of Soil Moisture with Evapotranspiration",
-    "required_programs" : ["python", "Rscript"],
-    "required_r_packages" : ["colorRamps", "maps", "fields", "akima", "ncdf4"]
+    "runtime_requirements": {
+      "python": [],
+      "Rscript": ["colorRamps", "maps", "fields", "akima", "ncdf4"]
+    }
   },
   //
   // USAGE varlist

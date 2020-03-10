@@ -14,8 +14,10 @@
     "long_name" : "EOF of geopotential height anomalies of 500 hPa",
     "realm" : "atmos",
     "description" : "EOF of geopotential height anomalies for 500 hPa",
-    "required_programs" : ["python", "ncl"],
-    "required_ncl_scripts" : ["contributed", "gsn_code", "gsn_csm"]
+    "runtime_requirements": {
+      "python": [],
+      "ncl": ["contributed", "gsn_code", "gsn_csm"]
+    }
   },
   //
   // USAGE varlist

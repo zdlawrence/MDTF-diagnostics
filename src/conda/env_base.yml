@@ -1,4 +1,4 @@
-name: _MDTF-diagnostics-base
+name: _MDTF-base
 channels:
 - conda-forge
 - defaults
@@ -7,3 +7,4 @@ dependencies:
 - subprocess32
 - nco>=4.7.6,<=4.8.1
 - mock
+- netCDF4
