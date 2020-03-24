@@ -155,7 +155,7 @@ class MDTFFramework(object):
                 case['CASE_ROOT_DIR'] = case['root_dir']
                 del case['root_dir']
             # if pods set from CLI, overwrite pods in case list
-            if cli_obj.is_default['pods'] or not case.get('pod_list', None):
+            if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
                 case['pod_list'] = self.pod_list
 
     def caselist_from_args(self, cli_obj):
