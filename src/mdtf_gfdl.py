@@ -85,7 +85,7 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
         requested_pods = super(GFDLMDTFFramework, self).set_case_pod_list(
             case, cli_obj, config
         )
-        if not self.frepp_mode:
+        if not config.config.get('frepp', False):
             # try to run everything if not in frepp cooperative mode
             return requested_pods
         else:
