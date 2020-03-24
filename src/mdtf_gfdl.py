@@ -81,16 +81,16 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
                 config.paths.OUTPUT_DIR, self.timeout, self.dry_run
             )
 
-    def set_case_pod_list(self, case_dict, config):
+    def set_case_pod_list(self, case, cli_obj, config):
         requested_pods = super(GFDLMDTFFramework, self).set_case_pod_list(
-            case_dict, config
+            case, cli_obj, config
         )
         if not self.frepp_mode:
             # try to run everything if not in frepp cooperative mode
             return requested_pods
         else:
             # frepp mode:only attempt PODs other instances haven't already done
-            case_outdir = config.paths.modelPaths(case_dict, overwrite=True)
+            case_outdir = config.paths.modelPaths(case, overwrite=True)
             case_outdir = case_outdir.MODEL_OUT_DIR
             for p in requested_pods:
                 if os.path.isdir(os.path.join(case_outdir, p)):
