@@ -124,7 +124,7 @@ class Diagnostic(object):
 
         Args:
             varlist (:obj:`list` of :obj:`dict`): Contents of the varlist portion 
-                of the POD's settings.json file.
+                of the POD's settings.jsonc file.
             verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
 
         Returns:
@@ -306,7 +306,7 @@ class Diagnostic(object):
         if self.driver == '':
             raise PodRequirementFailure(self, 
                 """No driver script found in {}. Specify 'driver' in 
-                settings.json.""".format(self.POD_CODE_DIR)
+                settings.jsonc.""".format(self.POD_CODE_DIR)
                 )
 
         if not os.path.isabs(self.driver): # expand relative path
@@ -337,7 +337,7 @@ class Diagnostic(object):
 
         Args:
             varlist (:obj:`list` of :obj:`dict`): Contents of the varlist portion 
-                of the POD's settings.json file.
+                of the POD's settings.jsonc file.
             verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
 
         Returns: :obj:`tuple` of found and missing file lists. Note that this is called
@@ -468,7 +468,7 @@ class Diagnostic(object):
             elif tropo_meas == '2':
                 template['TROPO_VAR'] = 'qsat_int'
             else:
-                print(("ERROR in convective_transition_diag's settings.json: "
+                print(("ERROR in convective_transition_diag's settings.jsonc: "
                     "BULK_TROPOSPHERIC_TEMPERATURE_MEASURE = {}, expected '1' "
                     "or '2'").format(tropo_meas))
 

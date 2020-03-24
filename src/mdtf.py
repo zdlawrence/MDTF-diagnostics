@@ -278,7 +278,7 @@ if __name__ == '__main__':
     # get dir of currently executing script: 
     cwd = os.path.dirname(os.path.realpath(__file__)) 
     code_root, src_dir = os.path.split(cwd)
-    mdtf = MDTFFramework(code_root, os.path.join(src_dir, 'defaults.json'))
+    mdtf = MDTFFramework(code_root, os.path.join(src_dir, 'defaults.jsonc'))
     print("\n======= Starting {}".format(__file__))
     mdtf.main_loop()
     print("Exiting normally from {}".format(__file__))

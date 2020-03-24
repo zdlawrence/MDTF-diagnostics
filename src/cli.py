@@ -350,7 +350,7 @@ def load_pod_settings(code_root, pod=None, pod_list=None):
     """
     # only place we can put it would be util.py if we want to avoid circular imports
     _pod_dir = 'diagnostics'
-    _pod_settings = 'settings.json'
+    _pod_settings = 'settings.jsonc'
     def _load_one_json(pod):
         d = dict()
         try:
