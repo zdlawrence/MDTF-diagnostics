@@ -159,8 +159,7 @@ class MDTFFramework(object):
             if d.get('LASTYR', None):
                 case['LASTYR'] = d['LASTYR']
             # if pods set from CLI, overwrite pods in case list
-            if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
-                case['pod_list'] = self.pod_list
+            case['pod_list'] = self.set_case_pod_list(case, cli_obj, config)
             
             self.case_list.append(case)
 
@@ -180,6 +179,13 @@ class MDTFFramework(object):
         if 'CASENAME' not in d:
             d['CASENAME'] = '{}_{}'.format(d['model'], d['experiment'])
         return [d]
+
+    def set_case_pod_list(self, case, cli_obj, config):
+        # if pods set from CLI, overwrite pods in case list
+        if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
+            return self.pod_list
+        else:
+            return case['pod_list']
 
     def parse_paths(self, cli_obj, config):
         config.paths.parse(cli_obj.config, cli_obj.custom_types.get('path', []))
