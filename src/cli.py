@@ -215,12 +215,17 @@ class CLIHandler(object):
         self.config = vars(self.parser.parse_args(args))
 
         # set flag for arguments that were left as default values
+        self.is_default = dict()
         for arg in self.iter_cli_actions():
             if isinstance(arg, RecordDefaultsAction):
                 flag_name = arg.dest + arg.flag_suffix
-                # set flag to indicate using default value for this argument
-                if flag_name not in self.config:
-                    self.config[flag_name] = True
+                if flag_name in self.config:
+                    del self.config[flag_name]
+                    self.is_default[arg.dest] = False
+                else:
+                    self.is_default[arg.dest] = True
+            else:
+                self.is_default[arg.dest] = None
 
 
 class FrameworkCLIHandler(CLIHandler):
