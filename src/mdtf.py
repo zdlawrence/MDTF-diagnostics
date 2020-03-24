@@ -144,19 +144,19 @@ class MDTFFramework(object):
         self.case_list = []
         if d.get('CASENAME', None) \
             or (d.get('model', None) and d.get('experiment', None)):
-            self.case_list = self.caselist_from_args(cli_obj)
+            case_list = self.caselist_from_args(cli_obj)
         else:
-            self.case_list = util.coerce_to_iter(cli_obj.case_list)
-        for i in range(len(self.case_list)):
-            case = self.case_list[i] # abbreviate
+            case_list = util.coerce_to_iter(cli_obj.case_list)
+        for case_dict in case_list:
             # remove empty entries
-            case = {k:v for k,v in case.iteritems() if v}
+            case = {k:v for k,v in case_dict.iteritems() if v}
             if not case.get('CASE_ROOT_DIR', None) and case.get('root_dir', None):
                 case['CASE_ROOT_DIR'] = case['root_dir']
                 del case['root_dir']
             # if pods set from CLI, overwrite pods in case list
             if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
                 case['pod_list'] = self.pod_list
+            self.case_list.append(case)
 
     def caselist_from_args(self, cli_obj):
         d = dict()
