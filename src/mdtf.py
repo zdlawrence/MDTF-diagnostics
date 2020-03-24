@@ -153,9 +153,15 @@ class MDTFFramework(object):
             if not case.get('CASE_ROOT_DIR', None) and case.get('root_dir', None):
                 case['CASE_ROOT_DIR'] = case['root_dir']
                 del case['root_dir']
+            # if dates set on CLI, overwrite dates in case list
+            if d.get('FIRSTYR', None):
+                case['FIRSTYR'] = d['FIRSTYR']
+            if d.get('LASTYR', None):
+                case['LASTYR'] = d['LASTYR']
             # if pods set from CLI, overwrite pods in case list
             if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
                 case['pod_list'] = self.pod_list
+            
             self.case_list.append(case)
 
     def caselist_from_args(self, cli_obj):
