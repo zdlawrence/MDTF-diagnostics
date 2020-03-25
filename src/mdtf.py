@@ -29,7 +29,6 @@ import util
 import util_mdtf
 import data_manager
 import environment_manager
-import netcdf_helper
 import shared_diagnostic
 import netcdf_helper
 
