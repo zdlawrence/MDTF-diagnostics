@@ -29,15 +29,15 @@ class Diagnostic(object):
     settings.json file upon initialization.
 
     Attributes:
-        driver (:obj:`str`): Filename of the top-level driver script for the POD.
-        long_name (:obj:`str`): POD's name used for display purposes. May contain spaces.
-        description (:obj:`str`): Short description of POD inserted by the link in the
+        driver (:py:obj:`str`): Filename of the top-level driver script for the POD.
+        long_name (:py:obj:`str`): POD's name used for display purposes. May contain spaces.
+        description (:py:obj:`str`): Short description of POD inserted by the link in the
             top-level index.html file.
-        required_programs (:obj:`list` of :obj:`str`, optional): List of 
+        required_programs (:py:obj:`list` of :py:obj:`str`, optional): List of 
             executables required by the POD (typically language interpreters). 
             validate_environment.sh will make sure these are on the environment's
             $PATH before the POD is run.
-        required_ncl_scripts (:obj:`list` of :obj:`str`, optional): List of NCL 
+        required_ncl_scripts (:py:obj:`list` of :py:obj:`str`, optional): List of NCL 
             scripts required by the POD, if any.  
             validate_environment.sh will make sure these are on the environment's
             $PATH before the POD is run.
@@ -49,8 +49,8 @@ class Diagnostic(object):
         contents.
 
         Args:
-            pod_name (:obj:`str`): Name of the POD to initialize.
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            pod_name (:py:obj:`str`): Name of the POD to initialize.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
         """
         config = util_mdtf.ConfigManager()
         assert pod_name in config.pods
@@ -85,9 +85,9 @@ class Diagnostic(object):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.__init__`.
 
         Args:
-            settings (:obj:`dict`): Contents of the settings portion of the POD's
+            settings (:py:obj:`dict`): Contents of the settings portion of the POD's
                 settings.json file.
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
 
         Returns:
             Dict of parsed settings.
@@ -123,9 +123,9 @@ class Diagnostic(object):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.__init__`.
 
         Args:
-            varlist (:obj:`list` of :obj:`dict`): Contents of the varlist portion 
+            varlist (:py:obj:`list` of :py:obj:`dict`): Contents of the varlist portion 
                 of the POD's settings.json file.
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
 
         Returns:
             varlist
@@ -204,7 +204,7 @@ class Diagnostic(object):
         Sets all environment variables for POD.
 
         Args:
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
         """
         self.pod_env_vars.update({
             "POD_HOME": self.POD_CODE_DIR, # location of POD's code
@@ -255,7 +255,7 @@ class Diagnostic(object):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.setUp`.
 
         Args:
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
         """
         util_mdtf.check_required_dirs(
             already_exist =[self.POD_CODE_DIR, self.POD_OBS_DATA], 
@@ -271,7 +271,7 @@ class Diagnostic(object):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.setUp`.
 
         Args:
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
 
         Raises: :exc:`~shared_diagnostic.PodRequirementFailure` if driver script
             can't be found.
@@ -306,7 +306,7 @@ class Diagnostic(object):
         if self.driver == '':
             raise PodRequirementFailure(self, 
                 """No driver script found in {}. Specify 'driver' in 
-                settings.json.""".format(self.POD_CODE_DIR)
+                settings.jsonc.""".format(self.POD_CODE_DIR)
                 )
 
         if not os.path.isabs(self.driver): # expand relative path
@@ -336,11 +336,11 @@ class Diagnostic(object):
         Private method called by :meth:`~data_manager.DataManager.fetchData`.
 
         Args:
-            varlist (:obj:`list` of :obj:`dict`): Contents of the varlist portion 
+            varlist (:py:obj:`list` of :py:obj:`dict`): Contents of the varlist portion 
                 of the POD's settings.json file.
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
 
-        Returns: :obj:`tuple` of found and missing file lists. Note that this is called
+        Returns: :py:obj:`tuple` of found and missing file lists. Note that this is called
             recursively.
         """
         func_name = "\t \t check_for_varlist_files :"
@@ -392,7 +392,7 @@ class Diagnostic(object):
         :meth:`environment_manager.EnvironmentManager.run`.
 
         Returns:
-            (:obj:`list` of :obj:`str`): Command-line invocation to run the POD.
+            (:py:obj:`list` of :py:obj:`str`): Command-line invocation to run the POD.
         """
         #return [self.program + ' ' + self.driver]
         return ['/usr/bin/env python -u '+self.driver]
@@ -407,7 +407,7 @@ class Diagnostic(object):
         before the POD is run.
 
         Returns:
-            (:obj:`list` of :obj:`str`): Command-line invocation to validate 
+            (:py:obj:`list` of :py:obj:`str`): Command-line invocation to validate 
                 the POD's runtime environment.
         """
         # pylint: disable=maybe-no-member
@@ -436,7 +436,7 @@ class Diagnostic(object):
         the output directory and deletes temporary files.
 
         Args:
-            verbose (:obj:`int`, optional): Logging verbosity level. Default 0.
+            verbose (:py:obj:`int`, optional): Logging verbosity level. Default 0.
         """
         if isinstance(self.skipped, Exception):
             self.append_result_link(self.skipped)
@@ -468,7 +468,7 @@ class Diagnostic(object):
             elif tropo_meas == '2':
                 template['TROPO_VAR'] = 'qsat_int'
             else:
-                print(("ERROR in convective_transition_diag's settings.json: "
+                print(("ERROR in convective_transition_diag's settings.jsonc: "
                     "BULK_TROPOSPHERIC_TEMPERATURE_MEASURE = {}, expected '1' "
                     "or '2'").format(tropo_meas))
 
