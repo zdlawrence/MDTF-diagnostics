@@ -239,7 +239,7 @@ hus!1 = "lon"
 hus&lat=fin->$latname$({lats_map:latn_map})
 hus&lon=fin->$lonname$({lonw_map:lone_map})
 printVarSummary(hus)
-printMinMax(hus,0)
+;printMinMax(hus,0)
 
 ;***********************************************************
 ; Step 6: Compute lag regressions using regCoef_n

@@ -9,9 +9,13 @@ wk_dir = getenv("WK_DIR")
 casename = getenv("CASENAME")
 yr1 = getenv("FIRSTYR")
 yr2 = getenv("LASTYR")
+date_off = getenv("date_int_offset")
+lev_fac = getenv("pressure_to_Pa_factor")
 
 firstyr = stringtointeger(yr1)
 lastyr = stringtointeger(yr2)
+date_offset = stringtointeger(date_off) ; 1 for native CESM, 0 for GFDL & CMIP
+lev_factor = stringtointeger(lev_fac)
 nyrs = lastyr-firstyr+1
 nmons = nyrs*12
 
@@ -19,12 +23,6 @@ time_coord = getenv("time_coord")
 lat_coord = getenv("lat_coord")
 lon_coord = getenv("lon_coord")
 lev_coord = getenv("lev_coord")
-
-
-lat_var = getenv("lat_var")
-lon_var = getenv("lon_var")
-time_var = getenv("time_var")
-lev_var = getenv("lev_var")
 
 file_path = getenv("DATADIR")
 
@@ -39,10 +37,10 @@ else
 
 f_zg = addfile(file_path+"/mon/"+casename+"."+zg_var+".mon.nc","r")
 
-time = f_zg->$time_var$
-lat = f_zg->$lat_var$
-lon = f_zg->$lon_var$
-lev = f_zg->$lev_var$
+time = f_zg->$time_coord$
+lat = f_zg->$lat_coord$
+lon = f_zg->$lon_coord$
+lev = f_zg->$lev_coord$
 nlat = dimsizes(lat)
 nlon = dimsizes(lon)
 
@@ -60,14 +58,22 @@ do i=0,nlat-1
  gw(i) = sin(slat(i+1)/180.d0*pi)-sin(slat(i)/180.d0*pi)
 end do
 
-time_all = f_zg->$time_var$
-date_all = ut_calendar(time_all,-1)
-year_all = date_all/100
-iLev = ind(lev.eq.50000)
-
-start_date = firstyr*100+1
-end_date = (lastyr)*100+12
-
+time_all = f_zg->$time_coord$
+if (date_offset.eq.0) then
+   ; CMIP / GFDL date index, use YYYYMM
+   date_all = cd_calendar(time_all,-1)
+   year_all = date_all/100
+   start_date = firstyr*100+1
+   end_date = (lastyr)*100+12
+else if (date_offset.eq.1) then
+   ; CESM native date index, use YYYYMMDD
+   date_all = cd_calendar(time_all,-2)
+   year_all = date_all/10000
+   start_date = firstyr*10000+201
+   end_date = (lastyr+1)*10000+101
+end if
+end if
+; in either case, above only used to set following indices
 do i=0,dimsizes(date_all)-1
    if( date_all(i).eq.start_date ) then
       i1 = i
@@ -87,6 +93,11 @@ win_anom&$lon_coord$ = lon
 win_anom@long_name = "Winter (DJFM) 500mb height anomaly"
 win_anom@units = "meters"
 
+; attempt to find pressure level
+iLev = ind(lev.eq.(50000/lev_factor))
+if (ismissing(iLev)) then
+  print(" FATAL ERROR: No value equal to 50000 found in "+lev_coord+" in "+file_path+"/mon/"+casename+"."+zg_var+".mon.nc")
+end if
 
 z500 = f_zg->$zg_var$($time_coord$|i1:i2,$lev_coord$|iLev:iLev,$lat_coord$|:,$lon_coord$|:)
 ;z500 = vinth2p(z,hyam,hybm,500.,ps,2,1000.,1,False) ; (time,plev,lat,lon)

@@ -16,6 +16,10 @@ load "$POD_HOME/evans_plot.ncl"
 begin
 ; Set variables for two runs.
 
+
+  date_off = getenv("date_int_offset")
+  date_offset = stringtointeger(date_off) ; 1 for native CESM, 0 for GFDL & CMIP
+
   setfileoption("nc", "SuppressClose", False)
 
   var_name = getenv("pr_var")
@@ -30,6 +34,8 @@ begin
   ps_dir = getenv("WK_DIR")+"/model/PS/"
   firstyr = stringtoint(getenv("FIRSTYR"))
   lastyr = stringtoint(getenv("LASTYR"))
+  print(firstyr)
+  print(lastyr)
 ;;;;; For model only   ;;;;;
   model_fstruc = 0 ; Model file structure; 0 = single files; 1 = many files.
 
@@ -42,6 +48,7 @@ begin
   obs = (/False/)   ; True-obs, False-model. (TRMM-3B42-3HRLY assumed for obs. in separate monthly files.)
 ;  mrun_years = (/2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010/)
    mrun_years = ispan(firstyr,lastyr,1)
+   print(mrun_years)
 ;  orun_years = (/2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010/)
 
 
@@ -479,7 +486,7 @@ ps_name = ps_name0+"_pr."+region_plot+".dc."
               end if
             end if
             
-            tpert = 0.00001 ; Some temporary fix for incorrect ut_calendar functionality (rounding)
+            tpert = 0.00001 ; Some temporary fix for incorrect cd_calendar functionality (rounding)
             
           end if
           
@@ -504,18 +511,25 @@ ps_name = ps_name0+"_pr."+region_plot+".dc."
           delete(date)
           delete(datesec)
          else
-          t_utc = ut_calendar(time,-3)
+          t_utc = cd_calendar(time,-3)
          end if
  
 ; Requested start time and index in data
-          tstart = toint(run_years(iyear))*1000000+toint(months(imonth))*10000+(1*101) 
+          if (date_offset.eq.0) then
+            ; CMIP / GFDL date index
+            tstart = toint(run_years(iyear))*1000000+toint(months(imonth))*10000+(1*101) 
+          else if (date_offset.eq.1) then
+            ; CESM native date index
+            tstart = toint(run_years(iyear))*1000000+toint(months(imonth))*10000+(1*100) 
+          end if
+          end if
           print(tstart)
           
-; Adjust for ut_calendar problems in cam/climo runs as the first year is usually 0000 and
-; ut_calendar changes this to 0001 !! So adjust tstart forward by 1 year.
+; Adjust for cd_calendar problems in cam/climo runs as the first year is usually 0000 and
+; cd_calendar changes this to 0001 !! So adjust tstart forward by 1 year.
           if (time@units.eq."days since 0000-01-01 00:00:00") then
             tstart = tstart + 1000000
-            print("- Adjusting start date for CAM standalone runs which begin 0000 and ut_calendar switches in to 0001")
+            print("- Adjusting start date for CAM standalone runs which begin 0000 and cd_calendar switches in to 0001")
           end if
 
           printMinMax(t_utc,0)

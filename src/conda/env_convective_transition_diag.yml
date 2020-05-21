@@ -1,4 +1,4 @@
-name: _MDTF-diagnostics-python
+name: _MDTF_convective_transition_diag
 channels:
 - conda-forge
 - defaults
@@ -11,3 +11,4 @@ dependencies:
 - netCDF4
 - networkx
 - numba
+- ncl=6.5

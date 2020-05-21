@@ -55,6 +55,9 @@ olrvar = getenv("rlut_var")
 u250var = getenv("u250_var")
 u850var = getenv("u850_var")
 
+lev_fac = getenv("pressure_to_Pa_factor")
+lev_factor = stringtointeger(lev_fac)
+
 print("Input data path(Model) :" + diri)
 print("Input data path(obs) :" + diri1)
 print("Output data path :" + diro)
@@ -96,7 +99,7 @@ print("-------------------------------------------------------------------------
    ;--- read in time ---
    temp_time = a->time
    calend = temp_time@calendar
-;   print(calend)
+   print(calend)
  
   if(temp_time@calendar .ne. "360_day")  ;HadGEM2-CC uses a 360 day calendar
    utc_date = cd_calendar((a->time), 0)
@@ -107,10 +110,20 @@ print("-------------------------------------------------------------------------
 
     iStrt   = ind(ymd.eq.ymdStrt)              ; index start
     iLast   = ind(ymd.eq.ymdLast)              ; index last 
-    
+    print("CALENDAR DEBUG")   
+    printMinMax(ymd,0)
+    print("ymdStrt: "+ymdStrt+" iStrt: "+iStrt+" ymdLast: "+ymdLast+" iLast: "+iLast)
     print("Date range from year "+yeart(iStrt)+" to "+yeart(iLast))
 
-    u250t = a->$u250var$(iStrt:iLast,{25000},lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
+    ; HACK for merging in SPEAR code before we have general level extraction working
+    if (getenv("MDTF_3D_UV").eq."0") then
+      ; extract level from 4D data
+      u250t = a->$u250var$(iStrt:iLast,{25000/lev_factor},lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
+    else
+      ; 3D data
+      u250t = a->$u250var$(iStrt:iLast,lat_ind,:)     ;time,lev,lat,lon , 15N - 15S
+    end if
+    ; end HACK
     u250t@_FillValue = -999
 
     delete(temp_time)
@@ -154,7 +167,12 @@ print("Reading data for 250mb wind")
 
   u250 = u250t(:,:,:); Reading data over the all avaliable time period
   u250@_FillValue = -999
-  poisson_grid_fill(u250,True,1,1000,1e-2,0.6,0)
+
+  ; HACK for merging in SPEAR code before we have general level extraction working
+  if (getenv("MDTF_3D_UV").eq."0") then
+    poisson_grid_fill(u250,True,1,1000,1e-2,0.6,0)
+  end if
+  ; end HACK
   delete(u250t)
 print("U250 data has been read")
 ;----------- 850mb wind --------------
@@ -196,9 +214,17 @@ print("Reading data for 850mb wind")
   delete(time2)
  
  ;-read in data-
-    u850 = b->$u850var$(iStrt:iLast,{85000},lat_ind,:)     ;time,lat,lon , 15N - 15S
+  ; HACK for merging in SPEAR code before we have general level extraction working
+  if (getenv("MDTF_3D_UV").eq."0") then
+    ; extract level from 4D data    
+    u850 = b->$u850var$(iStrt:iLast,{85000/lev_factor},lat_ind,:)     ;time,lat,lon , 15N - 15S
     poisson_grid_fill(u850,True,1,1000,1e-2,0.6,0)
-    u850@_FillValue = -999
+  else
+    ; 3D data
+    u850 = b->$u850var$(iStrt:iLast,lat_ind,:)     ;time,lat,lon , 15N - 15S
+  end if
+  ; end HACK
+  u850@_FillValue = -999
 print("U850 data has been read")
 print("-------------------------------------------")
 

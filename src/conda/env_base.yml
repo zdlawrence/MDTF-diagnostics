@@ -1,9 +1,11 @@
-name: _MDTF-diagnostics-base
+name: _MDTF_base
 channels:
 - conda-forge
 - defaults
 dependencies:
 - python=2.7
 - subprocess32
+- imagemagick
+- nco>=4.5.4,<4.7.6
 - mock
 - netCDF4

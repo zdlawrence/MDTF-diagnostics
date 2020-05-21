@@ -23,7 +23,7 @@ begin
 print("--------------------------------------------------------------------------")  
 
 Model = getenv("CASENAME") 
-pr_conv=stringtointeger(getenv("pr_conversion_mm_day"))
+pr_conv=stringtofloat(getenv("pr_conversion_factor"))
 
 print("Model: " + Model)
 ;-------------------------------------------------------------------------------------
@@ -69,10 +69,9 @@ prvar = getenv("pr_var")
 
     pr = a->$prvar$(iStrt:iLast,:,:)     ;time,lat,lon
     pr@_FillValue = -999
-    printMinMax(pr,0)
 
-     print("convert to mm/day")
-     pr = pr * pr_conv
+    print("convert kg m-2 s-1 flux to mm/day rate")
+    pr = pr *pr_conv * 86400.0
 
     lon = tofloat(a->lon)
     lat = tofloat(a->lat)
@@ -110,6 +109,7 @@ prvar = getenv("pr_var")
 
   print("First doy: " + min(time) + "  last doy: " + max(time))
   print("time indices "+iStrt+" "+iLast+" "+ymd(iStrt)+" "+ymd(iLast))
+  printVarSummary(pr)
 
   H_all = pr(:,:,:)
   H_all@_FillValue = -999
