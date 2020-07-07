@@ -378,6 +378,9 @@ class DataManager(object):
                 ))
                 yield var
             elif not var.alternates:
+                print(("Couldn't find {} (= {}) @ {} for {} & no other "
+                        "alternates").format(
+                        var.name_in_model, var.name, var.date_freq, pod_name))
                 raise DataQueryFailure(
                     var,
                     ("Couldn't find {} (= {}) @ {} for {} & no other "
