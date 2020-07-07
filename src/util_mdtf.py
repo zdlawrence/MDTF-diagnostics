@@ -38,8 +38,6 @@ class _PathManager(util.NameSpace):
         if not paths_to_parse:
             print("Warning: didn't get list of paths from CLI.")
         for key in paths_to_parse:
-            if key == 'CODE_ROOT':
-                continue # just to be safe
             self[key] = self._init_path(key, d, env=env)
             if key in d:
                 d[key] = self[key]
@@ -50,54 +48,18 @@ class _PathManager(util.NameSpace):
         self.WORKING_DIR = self._init_path('WORKING_DIR', d, env=env)
         self.OUTPUT_DIR = self._init_path('OUTPUT_DIR', d, env=env)
 
+        if not self.WORKING_DIR:
+            self.WORKING_DIR = self.OUTPUT_DIR
+
     def _init_path(self, key, d, env=None):
         if self._unittest_flag: # use in unit testing only
             return 'TEST_'+key
         else:
             # need to check existence in case we're being called directly
             assert key in d, 'Error: {} not initialized.'.format(key)
-            return self.resolve_path(
+            return util.resolve_path(
                 util.coerce_from_iter(d[key]), root_path=self.CODE_ROOT, env=env
             )
-
-    @staticmethod
-    def resolve_path(path, root_path="", env=None):
-        """Abbreviation to resolve relative paths.
-
-        Args:
-            path (:obj:`str`): path to resolve.
-            root_path (:obj:`str`, optional): root path to resolve `path` with. If
-                not given, resolves relative to `cwd`.
-
-        Returns: Absolute version of `path`, relative to `root_path` if given, 
-            otherwise relative to `os.getcwd`.
-        """
-        def _expandvars(path, env_dict):
-            """Expand quoted variables of the form $key and ${key} in path,
-            where key is a key in env_dict, similar to os.path.expandvars.
-
-            See https://stackoverflow.com/a/30777398; specialize to not skipping
-            escaped characters and not changing unrecognized variables.
-            """
-            return re.sub(
-                r'\$(\w+|\{([^}]*)\})', 
-                lambda m: env_dict.get(m.group(2) or m.group(1), m.group(0)), 
-                path
-            )
-
-        path = os.path.expanduser(path) # resolve '~' to home dir
-        path = os.path.expandvars(path) # expand $VAR or ${VAR} for shell envvars
-        if isinstance(env, dict):
-            path = _expandvars(path, env)
-        if '$' in path:
-            print("Warning: couldn't resolve all env vars in '{}'".format(path))
-            return path
-        if os.path.isabs(path):
-            return path
-        if root_path == "":
-            root_path = os.getcwd()
-        assert os.path.isabs(root_path)
-        return os.path.normpath(os.path.join(root_path, path))
 
     def model_paths(self, case, overwrite=False):
         d = util.NameSpace()
@@ -117,8 +79,8 @@ class _PathManager(util.NameSpace):
             # bump both WK_DIR and OUT_DIR to same version because name of 
             # former may be preserved when we copy to latter, depending on 
             # copy method
-            d.MODEL_OUT_DIR, ver = bump_version(d.MODEL_OUT_DIR)
-            d.MODEL_WK_DIR, _ = bump_version(d.MODEL_WK_DIR, new_v=ver)
+            d.MODEL_WK_DIR, ver = bump_version(d.MODEL_WK_DIR, extra_dirs=[self.OUTPUT_DIR])
+            d.MODEL_OUT_DIR, _ = bump_version(d.MODEL_OUT_DIR, new_v=ver)
         return d
 
     def pod_paths(self, pod, case):
@@ -206,14 +168,25 @@ class VariableTranslator(util.Singleton):
             return varname_in
         assert convention in self.variables, \
             "Variable name translation doesn't recognize {}.".format(convention)
-        return self.variables[convention].inverse_get_(varname_in)
+        inv_lookup = self.variables[convention].inverse()
+        try:
+            return util.coerce_from_iter(inv_lookup[varname_in])
+        except KeyError:
+            print("ERROR: name {} not defined for convention {}.".format(
+                varname_in, convention))
+            raise
     
     def fromCF(self, convention, varname_in):
         if convention == 'CF': 
             return varname_in
         assert convention in self.variables, \
             "Variable name translation doesn't recognize {}.".format(convention)
-        return self.variables[convention].get_(varname_in)
+        try:
+            return self.variables[convention].get_(varname_in)
+        except KeyError:
+            print("ERROR: name {} not defined for convention {}.".format(
+                varname_in, convention))
+            raise
 
 
 def get_available_programs(verbose=0):
@@ -294,8 +267,10 @@ def check_required_dirs(already_exist =[], create_if_nec = [], verbose=1):
         else:
             print("Found "+dir)
 
-def bump_version(path, new_v=None):
+def bump_version(path, new_v=None, extra_dirs=[]):
     # return a filename that doesn't conflict with existing files.
+    # if extra_dirs supplied, make sure path doesn't conflict with pre-existing
+    # files at those locations either.
     def _split_version(file_):
         match = re.match(r"""
             ^(?P<file_base>.*?)   # arbitrary characters (lazy match)
@@ -316,6 +291,10 @@ def bump_version(path, new_v=None):
             file_ = ''.join([file_, ext_])
         return os.path.join(dir_, file_) + final_sep
 
+    def _path_exists(dir_list, file_, new_v, ext_, sep):
+        new_paths = [_reassemble(d, file_, new_v, ext_, sep) for d in dir_list]
+        return any([os.path.exists(p) for p in new_paths])
+
     if path.endswith(os.sep):
         # remove any terminating slash on directory
         path = path.rstrip(os.sep)
@@ -323,6 +302,8 @@ def bump_version(path, new_v=None):
     else:
         final_sep = ''
     dir_, file_ = os.path.split(path)
+    dir_list = util.coerce_to_iter(extra_dirs)
+    dir_list.append(dir_)
     file_, old_v = _split_version(file_)
     if not old_v:
         # maybe it has an extension and then a version number
@@ -339,10 +320,9 @@ def bump_version(path, new_v=None):
             new_v = 0
         else:
             new_v = int(old_v)
-        new_path = _reassemble(dir_, file_, new_v, ext_, final_sep)
-        while os.path.exists(new_path):
+        while _path_exists(dir_list, file_, new_v, ext_, final_sep):
             new_v = new_v + 1
-            new_path = _reassemble(dir_, file_, new_v, ext_, final_sep)
+        new_path = _reassemble(dir_, file_, new_v, ext_, final_sep)
     return (new_path, new_v)
 
 def append_html_template(template_file, target_file, template_dict={}, 

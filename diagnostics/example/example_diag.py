@@ -8,7 +8,7 @@ provides, instead of hard-coding them.
 from __future__ import print_function
 import os
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg') # non-X windows backend
 # Commands to load third-party libraries. Any code you don't include that's 
 # not part of your language's standard library should be listed in the 
 # settings.jsonc file.
@@ -18,9 +18,17 @@ import matplotlib.pyplot as plt    # python library we use to make plots
 
 ### 1) Loading model data files: ###############################################
 #
-# Command to load the netcdf file, from the path stored in the environment 
-# variable "TAS_FILE" (see the settings.jsonc file).
-model_dataset = xr.open_dataset(os.environ['TAS_FILE'])
+# The framework copies model data to a regular directory structure of the form
+# <DATADIR>/<frequency>/<CASENAME>.<variable_name>.<frequency>.nc
+# Here <variable_name> and frequency are requested in the "varlist" part of 
+# settings.json.
+
+# The following command replaces the substrings "{DATA_DIR}", "{CASENAME}", etc.
+# with the values of the corresponding environment variables:
+input_path = "{DATADIR}/mon/{CASENAME}.{tas_var}.mon.nc".format(**os.environ)
+
+# command to load the netcdf file
+model_dataset = xr.open_dataset(input_path)
 
 
 ### 2) Loading observational data files: #######################################

@@ -95,11 +95,15 @@ print("removing  seasonal cycle")
    P!2 = "lon"
    P@_FillValue=-999.0
 
-   ;yyyyddd  = yyyymmdd_to_yyyyddd(date_p)
-   yyyyddd_double = cd_calendar(time_p, 4)
-   yyyy = floor(yyyyddd_double)
-   ddd = floor(365.0*(yyyyddd_double - yyyy)) + 1.0 ; runs from 1 to 365
-   yyyyddd = toint(1000.0*yyyy + ddd)
+   yyyyddd  = yyyymmdd_to_yyyyddd(date_p)
+   ;yyyymmdd_to_yyyyddd is deprecated but unsure why this workaround doesn't work
+   ;yyyyddd_double = cd_calendar(time_p, 4)
+   ;yyyy = floor(yyyyddd_double)
+   ;ddd = floor(365.0*(yyyyddd_double - yyyy)) + 1.0 ; runs from 1 to 365
+   ;yyyyddd = toint(1000.0*yyyy + ddd)
+   if (isatt(time_p,"calendar")) then           ; default is gregorian
+      yyyyddd@calendar = time_p@calendar  
+   end if
    print("CALENDAR DEBUG")
    printMinMax(yyyyddd, 0)
 
@@ -107,7 +111,9 @@ print("removing  seasonal cycle")
 print("calculating raw and  smooth climatology ....")
    print("DEBUG: "+num(ismissing(P))+" missing vals in pr")
    rawclim = clmDayTLL(P,yyyyddd)
-   print("DEBUG: "+num(ismissing(rawclim))+" missing vals in smoothclim")
+   print("DEBUG: "+num(ismissing(rawclim))+" missing vals in rawclim")
+   printVarSummary(P)
+   printVarSummary(rawclim)
    smoothclim = smthClmDayTLL(rawclim,2)
    print("DEBUG: "+num(ismissing(smoothclim))+" missing vals in smoothclim")
 
