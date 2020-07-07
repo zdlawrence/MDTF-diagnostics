@@ -41,7 +41,7 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
             gfdl_tmp_dir = cli_obj.config.get('GFDL_PPAN_TEMP', '$TMPDIR')
         else:
             gfdl_tmp_dir = cli_obj.config.get('GFDL_WS_TEMP', '$TMPDIR')
-        gfdl_tmp_dir = config.paths.resolve_path(
+        gfdl_tmp_dir = util.resolve_path(
             gfdl_tmp_dir, root_path=self.code_root, env=config.global_envvars
         )
         if not os.path.isdir(gfdl_tmp_dir):
@@ -64,8 +64,9 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
 
     def verify_paths(self, config):
         # clean out WORKING_DIR if we're not keeping temp files
-        if os.path.exists(config.paths.WORKING_DIR) and \
-            not config.config.get('keep_temp', False):
+        if os.path.exists(config.paths.WORKING_DIR) and not \
+            (config.config.get('keep_temp', False) \
+            or config.paths.WORKING_DIR == config.paths.OUTPUT_DIR):
             shutil.rmtree(config.paths.WORKING_DIR)
         util_mdtf.check_required_dirs(
             already_exist = [
@@ -135,7 +136,11 @@ if __name__ == '__main__':
     # get dir of currently executing script: 
     cwd = os.path.dirname(os.path.realpath(__file__)) 
     code_root, src_dir = os.path.split(cwd)
-    mdtf = GFDLMDTFFramework(code_root, os.path.join(src_dir, 'cli_gfdl.jsonc'))
+    defaults_rel_path = os.path.join(src_dir, 'cli_gfdl.jsonc')
+    if not os.path.exists(defaults_rel_path):
+        # print('Warning: site-specific cli_gfdl.jsonc not found, using template.')
+        defaults_rel_path = os.path.join(src_dir, 'cli_template.jsonc')
+    mdtf = GFDLMDTFFramework(code_root, defaults_rel_path)
     print("\n======= Starting {}".format(__file__))
     mdtf.main_loop()
     print("Exiting normally from {}".format(__file__))

@@ -56,8 +56,6 @@ class RecordDefaultsAction(argparse.Action):
 
     def __init__(self, option_strings, dest, nargs=None, const=None, 
         default=None, required=False, **kwargs):
-        assert default is not None
-        required = False
         if isinstance(default, bool):
             nargs = 0             # behave like a flag
             const = (not default) # set flag = store opposite of default
@@ -82,11 +80,10 @@ class RecordDefaultsAction(argparse.Action):
 
 
 class CLIHandler(object):
-    def __init__(self, code_root, defaults_rel_path):
+    def __init__(self, code_root, cli_config, partial_defaults=None):
         self.code_root = code_root
-        defaults_path = os.path.join(code_root, defaults_rel_path)
-        defaults = util.read_json(defaults_path)
         self.config = dict()
+        self.partial_defaults = partial_defaults
         self.parser_groups = dict()
         # no way to get this from public interface? _actions of group
         # contains all actions for entire parser
@@ -94,7 +91,12 @@ class CLIHandler(object):
         # manually track args requiring custom postprocessing (even if default
         # is used, so can't do with action=.. in argument)
         self.custom_types = collections.defaultdict(list)
-        self.parser = self.make_parser(defaults)
+        if isinstance(cli_config, basestring):
+            # we were given a path to config file, instead of file's contents
+            if not os.path.isabs(cli_config):
+                cli_config = os.path.join(code_root, cli_config)
+            cli_config = util.read_json(cli_config)
+        self.parser = self.make_parser(cli_config)
 
     def iter_cli_actions(self):
         for arg_gp in self.parser_args_from_group:
@@ -134,14 +136,15 @@ class CLIHandler(object):
 
     def add_parser_group(self, d, target_obj):
         gp_nm = d.pop('name')
-        if 'title' not in d:
-            d['title'] = gp_nm
+        _ = d.setdefault('title', gp_nm)
         args = util.coerce_to_iter(d.pop('arguments', None))
-        gp_kwargs = util.filter_kwargs(d, argparse._ArgumentGroup.__init__)
-        gp_obj = target_obj.add_argument_group(**gp_kwargs)
-        self.parser_groups[gp_nm] = gp_obj
-        for arg in args:
-            self.add_parser_argument(arg, gp_obj, gp_nm)
+        if args:
+            # only add group if it has > 0 arguments
+            gp_kwargs = util.filter_kwargs(d, argparse._ArgumentGroup.__init__)
+            gp_obj = target_obj.add_argument_group(**gp_kwargs)
+            self.parser_groups[gp_nm] = gp_obj
+            for arg in args:
+                self.add_parser_argument(arg, gp_obj, gp_nm)
     
     @staticmethod
     def canonical_arg_name(str_):
@@ -151,8 +154,9 @@ class CLIHandler(object):
 
     def add_parser_argument(self, d, target_obj, target_name):
         # set flags:
+        if 'name' not in d:
+            raise ValueError("No argument name found in {}".format(d))
         arg_nm = self.canonical_arg_name(d.pop('name'))
-        assert arg_nm, "No argument name found in {}".format(d)
         arg_flags = [arg_nm]
         if d.pop('is_positional', False):
             # code to handle positional arguments
@@ -185,16 +189,13 @@ class CLIHandler(object):
                 if attr in d:
                     d[attr] = eval(d[attr])
 
-        # set more technical argparse options based on default value
-        if 'default' in d and 'action' not in d:
-            d['action'] = RecordDefaultsAction
+        _ = d.setdefault('action', RecordDefaultsAction)
 
         # change help string based on default value
         if d.pop('hidden', False):
             # do not list argument in "mdtf --help", but recognize it
             d['help'] = argparse.SUPPRESS
 
-        # d = util.filter_kwargs(d, argparse.ArgumentParser.add_argument)
         self.parser_args_from_group[target_name].append(
             target_obj.add_argument(*arg_flags, **d)
         )
@@ -205,8 +206,9 @@ class CLIHandler(object):
         # is called.
         self.parser.set_defaults(**kwargs)
         
-    def parse_cli(self, args=None):
-        # default will parse sys.argv[1:]
+    def preparse_cli(self, args=None):
+        # "first pass" 
+        # if no args are passed, default will parse sys.argv[1:]
         if isinstance(args, basestring):
             args = shlex.split(args, posix=True)
         self.config = vars(self.parser.parse_args(args))
@@ -222,33 +224,51 @@ class CLIHandler(object):
                 else:
                     self.is_default[arg.dest] = True
             else:
-                self.is_default[arg.dest] = None
+                self.is_default[arg.dest] = (arg.dest is arg.default)
+
+    def parse_cli(self, args=None):
+        # call preparse_cli if child class hasn't done so already
+        if not self.config:
+            self.preparse_cli(args)
+
+        # if no additional defaults were set, that's sufficient, otherwise need
+        # to take into account their intermediate priority
+        if isinstance(self.partial_defaults, dict):
+            # not handled correctly by coerce_to_iter
+            self.partial_defaults = [self.partial_defaults] 
+        self.partial_defaults = util.coerce_to_iter(self.partial_defaults)
+        partial_defaults = []
+        for d in self.partial_defaults:
+            # drop empty strings
+            partial_defaults.append({k:v for k,v in d.iteritems() if v != ""})
+
+        # self.config was populated by preparse_cli()
+        # Options explicitly set by user on CLI; is_default = None if no default
+        cli_opts = {k:v for k,v in self.config.iteritems() \
+            if not self.is_default.get(k, True)}
+        # full set of defaults from cli.jsonc, from running parser on empty input
+        defaults = vars(self.parser.parse_args([]))
+        chained_dict_list = [cli_opts] + partial_defaults + [defaults]
+
+        # CLI opts override options set from file, which override defaults
+        self.config = dict(ChainMap(*chained_dict_list))
 
 
 class FrameworkCLIHandler(CLIHandler):
     def __init__(self, code_root, cli_rel_path):
-        self.code_root = code_root
         cli_config = util.read_json(os.path.join(code_root, cli_rel_path))
         self.case_list = cli_config.pop('case_list', [])
         self.pod_list = cli_config.pop('pod_list', [])
-        self.config = dict()
-        self.parser_groups = dict()
-        self.parser_args_from_group = collections.defaultdict(list)
-        self.custom_types = collections.defaultdict(list)
-        self.parser = self.make_default_parser(cli_config, cli_rel_path)
+        super(FrameworkCLIHandler, self).__init__(
+            code_root, cli_config, partial_defaults=None
+        )
 
-    def make_default_parser(self, d, config_path):
-        # add more standard options to top-level parser
+    def make_parser(self, d):
         _ = d.setdefault(
             'usage',
             ("%(prog)s [options] [INPUT_FILE] [CASE_ROOT_DIR]\n"
                 "{}%(prog)s info [TOPIC]").format(len('usage: ')*' ')
         )
-        return self.make_parser(d)
-
-    def make_parser(self, d):
-        # used for defaults (above) and if we're passed a config file via the CLI
-        # (file_opts, below)
         p = super(FrameworkCLIHandler, self).make_parser(d)
         p._positionals.title = None
         p._optionals.title = 'GENERAL OPTIONS'
@@ -289,18 +309,11 @@ class FrameworkCLIHandler(CLIHandler):
     def parse_cli(self, args=None):
         # explicitly set cmd-line options, parsed according to default parser;
         # result stored in self.config
-        super(FrameworkCLIHandler, self).parse_cli(args)
+        self.preparse_cli(args)
 
         # handle positionals here because we need to find input_file
         self.parse_positionals('input_file')
         self.parse_positionals('root_dir')
-
-        # Options explicitly set by user on CLI; is_default = None if no default
-        cli_opts = {k:v for k,v in self.config.iteritems() \
-            if self.is_default.get(k, None) is False}
-        # full set of defaults from cli.jsonc, from running parser on empty input
-        defaults = vars(self.parser.parse_args([]))
-        chained_dict_list = [cli_opts, defaults]
 
         # deal with options set in user-specified defaults file, if present
         config_path = self.config.get('INPUT_FILE', None)
@@ -314,19 +327,15 @@ class FrameworkCLIHandler(CLIHandler):
         if config_str:
             try:
                 file_input = util.parse_json(config_str)
-                print(cli_opts)
-                print('DEBUG')
-                print(file_input)
                 # overwrite default case_list and pod_list, if given
                 if 'case_list' in file_input:
                     self.case_list = file_input.pop('case_list')
                 if 'pod_list' in file_input:
                     self.pod_list = file_input.pop('pod_list')
                 # assume config_file a JSON dict of option:value pairs.
-                file_input = {
+                self.partial_defaults = [{
                     self.canonical_arg_name(k): v for k,v in file_input.iteritems()
-                }
-                chained_dict_list = [cli_opts, file_input, defaults]
+                }]
             except Exception:
                 if 'json' in os.path.splitext('config_path')[1].lower():
                     print("ERROR: Couldn't parse JSON in {}.".format(config_path))
@@ -334,11 +343,12 @@ class FrameworkCLIHandler(CLIHandler):
                 # assume config_file is a plain text file containing flags, etc.
                 # as they would be passed on the command line.
                 config_str = util.strip_comments(config_str, '#')
-                file_input = vars(self.parser.parse_args(shlex.split(config_str)))
-                chained_dict_list = [cli_opts, file_input, defaults]
-
+                self.partial_defaults = [vars(
+                    self.parser.parse_args(shlex.split(config_str))
+                )]
         # CLI opts override options set from file, which override defaults
-        self.config = dict(ChainMap(*chained_dict_list))
+        super(FrameworkCLIHandler, self).parse_cli(args)
+
 
 
 PodDataTuple = collections.namedtuple(
