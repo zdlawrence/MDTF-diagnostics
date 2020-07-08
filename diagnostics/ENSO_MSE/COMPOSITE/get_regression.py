@@ -5,6 +5,8 @@ import sys
 
 from scipy import stats
 
+from read_netcdf_2D import read_netcdf_2D
+
 ###   read in data and make composite  regression to variable2 = SST = x, variable1 = y 
 ##      output is the coefficient A in  y = a*x * + b
 ####
@@ -20,11 +22,14 @@ def get_regression(imax, jmax, zmax, iy1, iy2, im1, im2, ii1, ii2, jj1, jj2, var
 ###  time series for the linear fit   need only the first variable
 ##       the second is set as one time series of SST anomaly averages over ii1, ii2, jj1, jj2
     tmax = 12 * (iy2 - iy1 + 1)
-    tvar1 = np.zeros( (imax,jmax, tmax),dtype='float32', order='F') 
-    tvar2 = np.zeros( (tmax),dtype='float32', order='F')
-    xx2 = np.zeros( (tmax),dtype='float32', order='F')
-    yy2 = np.zeros( (tmax),dtype='float32', order='F')
-    aregress = np.zeros((imax,jmax),dtype='float32', order='F')
+    tvar1 = np.ma.zeros( (imax,jmax, tmax),dtype='float32', order='F') 
+    tvar2 = np.ma.zeros( (tmax),dtype='float32', order='F')
+    clima1  = np.ma.zeros( (imax,jmax,tmax),dtype='float32', order='F')
+    clima2  = np.ma.zeros( (imax,jmax,tmax),dtype='float32', order='F')
+    # following two variables commented out because they were allocated but never used 
+    # xx2 = np.zeros( (tmax),dtype='float32', order='F')
+    # yy2 = np.zeros( (tmax),dtype='float32', order='F')
+    aregress = np.ma.zeros((imax,jmax),dtype='float32', order='F')
 
 #    
 #     get in the climatology first :
@@ -66,10 +71,10 @@ def get_regression(imax, jmax, zmax, iy1, iy2, im1, im2, ii1, ii2, jj1, jj2, var
                     vvar2 = np.ma.masked_greater_equal( vvar2, undef, copy=False)
                 ###  collect the global time series of anomalies
                 ##  get the SST anomaly  based on ii, jj 
-                    sst_anom = mean ( vvar2[ii1:ii2,jj1:jj2, imm-1]  - clima2[ii1:ii2, jj1:jj2, imm-1] ) 
+                    sst_anom = np.mean( vvar2[ii1:ii2,jj1:jj2, imm-1]  - clima2[ii1:ii2, jj1:jj2, imm-1] ) 
                     tvar2[it2] = sst_anom
                 ###    collect  global anomaly variable1 
-                    tvar1[:,:]  =  mean ( ff * vvar1[:,:,imm-1] - clima1[:,:imm-1])
+                    tvar1[:,:]  = np.mean( ff * vvar1[:,:,imm-1] - clima1[:,:,imm-1])
                 else:
                     print " missing file 1 " + namein1
                     print " of missing file 2 " + namein2

@@ -47,13 +47,11 @@ shared_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'shared'
 )
-os.sys.path.insert(0, shared_dir)
+sys.path.insert(0, shared_dir)
 from util import check_required_dirs
 from get_lon_lat_plevels_in import  get_lon_lat_plevels_in
 from get_dimensions import get_dimensions
 from generate_ncl_plots import generate_ncl_plots
-
-from read_netcdf import read_netcdf
 
 '''
       This package is distributed under the LGPLv3 license (see LICENSE.txt)
@@ -500,9 +498,9 @@ if( composite24 == 1):
     pr24 = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "PR", tmax24,  pr24, prefix1, prefix2, undef2)
     ts24  = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "TS", tmax24, ts24, prefix1, prefix2, undef2)
     shf24 = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "SHF", tmax24, shf24, prefix1, prefix2, undef2)
-    lhf24 = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "LHF", tmax24, lhf24, prefix1, prefix2, undef, undef2)
+    lhf24 = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "LHF", tmax24, lhf24, prefix1, prefix2, undef2)
     sw24  = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "SW",tmax24,  sw24, prefix1, prefix2, undef2)
-    lw24  = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "LW", tmax24, lw24, prefix1, prefix2,  undef, undef2)
+    lw24  = get_flux_in_24(imax, jmax, ttmax1, years1, iy2, "LW", tmax24, lw24, prefix1, prefix2, undef2)
     
     now = datetime.datetime.now()
     print"  ELNINO: all flux variables completed " + now.strftime("%Y-%m-%d %H:%M")
@@ -554,7 +552,7 @@ if( composite24 == 1):
     ts24  = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "TS", tmax24, ts24, prefix1, prefix2, undef2)
     shf24 = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "SHF", tmax24, shf24, prefix1, prefix2,  undef2)
     lhf24 = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "LHF", tmax24, lhf24, prefix1, prefix2, undef2)
-    sw24  = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "SW",tmax24,  sw24, prefix1, prefix2,  undef, undef2)
+    sw24  = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "SW",tmax24,  sw24, prefix1, prefix2, undef2)
     lw24  = get_flux_in_24(imax, jmax, ttmax2, years2, iy2, "LW", tmax24, lw24, prefix1, prefix2,  undef2)
     now = datetime.datetime.now()
     print"  LANINA: all flux variables completed " + now.strftime("%Y-%m-%d %H:%M")

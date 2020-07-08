@@ -46,14 +46,12 @@ shared_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'shared'
 )
-os.sys.path.insert(0, shared_dir)
+sys.path.insert(0, shared_dir)
 from util import check_required_dirs
 from get_season import get_season
 from get_lon_lat_plevels_in import  get_lon_lat_plevels_in
 from get_dimensions import get_dimensions
 from generate_ncl_call import generate_ncl_call
-
-from read_netcdf import read_netcdf
 
 '''
       This package is distributed under the LGPLv3 license (see LICENSE.txt)

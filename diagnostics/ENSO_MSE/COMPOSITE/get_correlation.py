@@ -3,18 +3,21 @@ import os.path
 import math
 import sys
 
+from read_netcdf_2D import read_netcdf_2D
+from read_netcdf_3D import read_netcdf_3D
+
 
 ###   read in data and make composite  correlations need anomalies to calculate
 
 def get_correlation(imax, jmax, zmax,  iy1, iy2, im1, im2, ii1, ii2, jj1, jj2, variable1, variable2, correl, prefix, prefixclim, undef):
 
-    ss     = np.zeros( (imax,jmax),dtype='float32', order='F')      
-    vvar1  = np.zeros( (imax,jmax),dtype='float32', order='F')
-    vvar2  = np.zeros( (imax,jmax),dtype='float32', order='F')
-    correl = np.zeros( (imax,jmax),dtype='float32', order='F')
-    variance1 = np.zeros((imax,jmax),dtype='float32')
+    ss     = np.ma.zeros( (imax,jmax),dtype='float32', order='F')      
+    vvar1  = np.ma.zeros( (imax,jmax),dtype='float32', order='F')
+    vvar2  = np.ma.zeros( (imax,jmax),dtype='float32', order='F')
+    correl = np.ma.zeros( (imax,jmax),dtype='float32', order='F')
+    variance1 = np.np.ma.zeros((imax,jmax),dtype='float32')
 ##    variance2 = np.zeros((imax,jmax),dtype='float32')
-    ss2 = np.zeros( (imax,jmax),dtype='float32', order='F')
+    ss2 = np.np.ma.zeros( (imax,jmax),dtype='float32', order='F')
     variance2 = 0.
     ss22 = 0.
 
@@ -54,14 +57,14 @@ def get_correlation(imax, jmax, zmax,  iy1, iy2, im1, im2, ii1, ii2, jj1, jj2, v
                     vvar2 = read_netcdf_2D(imax, jmax, tmax,  variable2,  namein2, vvar2, undef)
 ##               get the index SST based on ii, jj 
 ##                     average SST anomaly 
-                    sst_anom = mean(  vvar2[ii1:ii2,jj1:jj2, imm-1]  - clima2[ii1:ii2, jj1:jj2, imm-1] )
+                    sst_anom = np.mean( vvar2[ii1:ii2,jj1:jj2, imm-1] - clima2[ii1:ii2, jj1:jj2, imm-1] )
                     variance2 = variance2 + sst_anom*sst_anom    
                     ss22 = ss22 + 1.
 
 ####################################
 ###                       collect summations for the variances and covariances
-                    variance1 = variance1 + mean ( (vvar1[:,:, imm-1]   - clima1[:,:, imm-1])* (vvar1[:,:, imm-1] - clima1[:,:, imm-1]) ) 
-                    correl = correl + mean ( (vvar1[:,:, imm-1] - clima1[:,:, imm-1]) * sst_anom )
+                    variance1 = variance1 + np.mean( (vvar1[:,:, imm-1]   - clima1[:,:, imm-1])* (vvar1[:,:, imm-1] - clima1[:,:, imm-1]) ) 
+                    correl = correl + np.mean( (vvar1[:,:, imm-1] - clima1[:,:, imm-1]) * sst_anom )
                 else:
                     print "    missing file 1 " + namein1
                     print " or missing file 2 " + namein2
