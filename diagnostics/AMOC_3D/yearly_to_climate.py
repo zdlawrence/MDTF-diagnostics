@@ -52,10 +52,10 @@ def yearly_to_climate(model,DIR_in,DIR_out,fname,vname):
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+fname+"_????-????.yr.nc")
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
-       ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
-       shutil.copy(script,ncl)
-       os.environ["STR0"] = fname
-       os.environ["VAR0"] = vname
-       print("COMPUTING Yearly to Climate ... "+vname)
-       execute_ncl_calculate(ncl)
-       os.system("rm -f "+ncl)
+        ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
+        shutil.copy(script,ncl)
+        os.environ["STR0"] = fname
+        os.environ["VAR0"] = vname
+        print("COMPUTING Yearly to Climate ... "+vname)
+        execute_ncl_calculate(ncl)
+        os.system("rm -f "+ncl)

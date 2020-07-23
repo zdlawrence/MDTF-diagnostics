@@ -72,15 +72,15 @@ DIR_out=os.environ["OUTDIR"]
 
 missing_file=0
 if len(glob.glob(os.environ["MONDIR"]+model+"."+os.environ["vo_var"]+".mon*.nc"))==0:
-   print("Velocity data missing!")
-   missing_file=missing_file+1
+    print("Velocity data missing!")
+    missing_file=missing_file+1
 if len(glob.glob(os.environ["MONDIR"]+model+"."+os.environ["vmo_var"]+".mon*.nc"))==0:
-   print("Volume Transport NOT provided, will computed by Velocity!")
-   missing_file=missing_file+1
+    print("Volume Transport NOT provided, will computed by Velocity!")
+    missing_file=missing_file+1
 
 if missing_file==2:
-   print(" No transport or velocity provided. AMOC_3D_Structure will NOT be executed!")
-   exit()
+    print(" No transport or velocity provided. AMOC_3D_Structure will NOT be executed!")
+    exit()
 
 #============================================================
 # create html of QTS Figures together
@@ -148,45 +148,45 @@ convert_pdf2png()
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")
 num_model=str(len(os.environ["MODELS"].split()))
 if num_png==num_model:
-#   create_html3()
-#   exit()
-   script=os.environ["SRCDIR"]+"sum_Q_lat0_z_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_T_lat0_z_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_S_lat0_z_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"Twgt_vs_Swgt_lat0_dots_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_AMOCr_r_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_AMOCT_T_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_AMOCS_S_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_S_lat0_z_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_Qavg_lats_y_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_Twgt_lats_y_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_Swgt_lats_y_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_MHT_lats_y_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"sum_MFWT_lats_y_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"MFWT_vs_AMOCr_lat0_dots_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"MHT_vs_AMOCr_lat0_dots_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"MFWT_vs_Sdiff_lat0_dots_plot.ncl"
-   execute_ncl_calculate(script)
-   script=os.environ["SRCDIR"]+"MHT_vs_Tdiff_lat0_dots_plot.ncl"
-   execute_ncl_calculate(script)
-#   create_html2()
-   create_html3()
-#   exit()
+    #   create_html3()
+    #   exit()
+    script=os.environ["SRCDIR"]+"sum_Q_lat0_z_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_T_lat0_z_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_S_lat0_z_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"Twgt_vs_Swgt_lat0_dots_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_AMOCr_r_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_AMOCT_T_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_AMOCS_S_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_S_lat0_z_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_Qavg_lats_y_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_Twgt_lats_y_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_Swgt_lats_y_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_MHT_lats_y_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"sum_MFWT_lats_y_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"MFWT_vs_AMOCr_lat0_dots_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"MHT_vs_AMOCr_lat0_dots_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"MFWT_vs_Sdiff_lat0_dots_plot.ncl"
+    execute_ncl_calculate(script)
+    script=os.environ["SRCDIR"]+"MHT_vs_Tdiff_lat0_dots_plot.ncl"
+    execute_ncl_calculate(script)
+    #   create_html2()
+    create_html3()
+    #   exit()
 
 print("**************************************************")
 print("AMOC_3D_Structure Package (AMOC_3D_Structure.py) Executed!")

@@ -44,10 +44,10 @@ def get_dxdydz_LatLon(model,fname):
     dz4d=""
     num0=len(glob.glob(os.environ["MONDIR"]+model+"."+os.environ["thkcello_var"]+".mon.nc"))
     if num0== 1:
-       dz4d="True"
+        dz4d="True"
     num1=len(glob.glob(os.environ["FIXDIR"]+model+"."+os.environ["thkcello_var"]+".fx.nc"))
     if num1== 1:
-       dz4d="False"
+        dz4d="False"
 
     nc=os.environ["FIXDIR"]+model+"."+os.environ["deptho_var"]+".fx.nc"
     os.environ["DEPTHO"]=os.path.basename(nc)
@@ -60,28 +60,28 @@ def get_dxdydz_LatLon(model,fname):
     os.environ["DIR_IN3"] = os.environ["FIXDIR"]
     os.environ["THKCELLO"]= model+".thkcello.fx.nc"
     if dz4d == "True":
-       nc=os.environ["MONDIR"]+model+"."+os.environ["thkcello_var"]+".mon.nc"
-       os.environ["THKCELLO"]=os.path.basename(nc)
-       os.environ["DIR_IN3"] = os.environ["MONDIR"]
-       fix="True"
+        nc=os.environ["MONDIR"]+model+"."+os.environ["thkcello_var"]+".mon.nc"
+        os.environ["THKCELLO"]=os.path.basename(nc)
+        os.environ["DIR_IN3"] = os.environ["MONDIR"]
+        fix="True"
     elif dz4d == "False":
-       nc=os.environ["FIXDIR"]+model+"."+os.environ["thkcello_var"]+".fx.nc"
-       os.environ["THKCELLO"]=os.path.basename(nc)
-       fix="True"
+        nc=os.environ["FIXDIR"]+model+"."+os.environ["thkcello_var"]+".fx.nc"
+        os.environ["THKCELLO"]=os.path.basename(nc)
+        fix="True"
     else:
-       fix="False"
+        fix="False"
 
     os.environ["VAR0"] = fname
-        
+    
     print("COMPUTING Grid Size ...")
     execute_ncl_calculate(ncl)
     os.system("rm -f "+ncl)
 
-#    if (fix == "True" and fname != "vo"):
-#       script2=os.environ["SRCDIR"]+"interp_vit_to_viv_dxdydz.ncl"
-#       sname=os.path.splitext(os.path.basename(script2))[0]
-#       ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+fname+".ncl"
-#       shutil.copy(script2,ncl)
-#       print("Interpolating T-grid to V-grid ...")
-#       execute_ncl_calculate(ncl)
-#       os.system("rm -f "+ncl)
+    #    if (fix == "True" and fname != "vo"):
+    #       script2=os.environ["SRCDIR"]+"interp_vit_to_viv_dxdydz.ncl"
+    #       sname=os.path.splitext(os.path.basename(script2))[0]
+    #       ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+fname+".ncl"
+    #       shutil.copy(script2,ncl)
+    #       print("Interpolating T-grid to V-grid ...")
+    #       execute_ncl_calculate(ncl)
+    #       os.system("rm -f "+ncl)

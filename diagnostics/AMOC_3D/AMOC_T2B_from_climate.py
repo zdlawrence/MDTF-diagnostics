@@ -31,7 +31,7 @@ def AMOC_T2B_from_climate(model,DIR_in,DIR_out):
     '''
     ----------------------------------------------------------------------
     Note
-       Volume Transport
+        Volume Transport
     ----------------------------------------------------------------------
     '''
     import os
@@ -43,8 +43,8 @@ def AMOC_T2B_from_climate(model,DIR_in,DIR_out):
     sname=os.path.splitext(os.path.basename(script))[0]
     nc = os.environ["OUTDIR"]+model+"."+os.environ["vmo_var"]+".clim.nc"
     if os.path.isfile(nc):
-       ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
-       shutil.copy(script,ncl)
-       print("COMPUTING AMOCz")
-       execute_ncl_calculate(ncl)
-       os.system("rm -f "+ncl)
+        ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
+        shutil.copy(script,ncl)
+        print("COMPUTING AMOCz")
+        execute_ncl_calculate(ncl)
+        os.system("rm -f "+ncl)
