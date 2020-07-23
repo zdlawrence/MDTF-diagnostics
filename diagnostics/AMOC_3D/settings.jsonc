@@ -1,0 +1,68 @@
+// AMOC 3D Structure Diagnostic
+//
+// All text to the right of an unquoted "//" is a comment and ignored, as well
+// as blank lines (JSONC quasi-standard.) JSON doesn't support line continuation
+// in strings, so you'll want to turn word wrap on in your editor.
+//
+{
+  "settings" : {
+    "driver" : "AMOC_3D_wrapper.py",
+    "long_name" : "3D structures of AMOC",
+    "realm" : "ocean",
+    "description": "AMOC 3D Structure, contributed by Xiaobiao Xu (FSU/COAPS)",
+    "pod_env_vars" : {
+      // optional pod-specific shell environment variables.
+      // Values copied from those set in POD's mdtf.py v1.0.
+      "DT" : "0.2",
+      "DS" : "0.04",
+      "LAT0": "26.5"
+    },
+    "runtime_requirements": {
+      "python": [],
+      "ncl": ["contributed", "gsn_code", "gsn_csm", "shea_util", "diagnostics_cam"]
+    }
+  },
+  //
+  // USAGE varlist
+  // var_name time-frequency [requirement]
+  // - var_name: as found in src/fieldlist_*.json
+  // - freq: mon (monthly), day, 6hr, 3hr, 1hr
+  // - requirement = blank  (default = optional),
+  //                 required (package cannot run without this)
+  //                 required unless field_name field_name2 ...
+  // - alternates:
+  //
+  // nb. if a variable is required at multiple time frequencies, list it 
+  // separately for each one. Clearly the developer can just leave out 
+  // optional files. However, it is always nice to get an upfront warning of
+  // missing files.
+  //
+  "varlist" : [
+    {
+      "var_name" : "vo_var",
+      "freq" : "mon",
+      "requirement" : "required"
+    },{
+      "var_name": "vmo_var",
+      "freq": "mon",
+      "requirement": "required",
+      "alternates" : ["vo_var"] // can recover vmo from vo if not provided
+    },{
+      "var_name" : "so_var",
+      "freq" : "mon",
+      "requirement" : "required"
+    },{
+      "var_name" : "thetao_var",
+      "freq" : "mon",
+      "requirement" : "required"
+    },{
+      "var_name": "thkcello_var",
+      "freq": "fx", // need to allow for dynamical thkcello as well
+      "requirement": "required"
+    },{
+      "var_name": "deptho_var",
+      "freq": "fx",
+      "requirement": "required"
+    }
+  ]
+}
