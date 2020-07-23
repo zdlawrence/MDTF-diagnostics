@@ -7,7 +7,9 @@ def single_ncl_test(model):
     ----------------------------------------------------------------------
     '''
     import os
-    import shutil
+    import glob
+    import shutil 
+    import subprocess
     from post_process import execute_ncl_calculate
 
 #====================================================================================================

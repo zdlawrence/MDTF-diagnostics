@@ -5,11 +5,11 @@ from post_process import convert_pdf2png_obs
 from post_process import execute_ncl_calculate
 
 if len(glob.glob(os.environ["REFDIR"]+"*.png"))==18:
-    print("Figures of reference exists. Copy them to "+os.environ["PNGREF"])
-    os.system("cp "+os.environ["REFDIR"]+"*.png "+os.environ["PNGREF"])   
-    exit()
+   print("Figures of reference exists. Copy them to "+os.environ["PNGREF"])
+   os.system("\cp "+os.environ["REFDIR"]+"*.png "+os.environ["PNGREF"])   
+   exit()
 else:  
-    print("Ploting Figures of reference ...")
+   print("Ploting Figures of reference ...")
 
 # 26.5
 
@@ -78,15 +78,15 @@ convert_pdf2png_obs()
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")
 num_model=str(len(os.environ["MODELS"].split()))
 if num_png==num_model:
-    script=os.environ["SRCDIR"]+"ref_MFWT_vs_AMOCr_lat0_dots_plot.ncl"
-    execute_ncl_calculate(script)
-    script=os.environ["SRCDIR"]+"ref_MHT_vs_AMOCr_lat0_dots_plot.ncl"
-    execute_ncl_calculate(script)
-    script=os.environ["SRCDIR"]+"ref_MFWT_vs_Sdiff_lat0_dots_plot.ncl"
-    execute_ncl_calculate(script)
-    script=os.environ["SRCDIR"]+"ref_MHT_vs_Tdiff_lat0_dots_plot.ncl"
-    execute_ncl_calculate(script)
-    os.system("cp "+os.environ["HTMDIR"]+"/template3.html "+os.environ["WKDIR"]+"/AMOC_3D_Structure_overall.html")   
+   script=os.environ["SRCDIR"]+"ref_MFWT_vs_AMOCr_lat0_dots_plot.ncl"
+   execute_ncl_calculate(script)
+   script=os.environ["SRCDIR"]+"ref_MHT_vs_AMOCr_lat0_dots_plot.ncl"
+   execute_ncl_calculate(script)
+   script=os.environ["SRCDIR"]+"ref_MFWT_vs_Sdiff_lat0_dots_plot.ncl"
+   execute_ncl_calculate(script)
+   script=os.environ["SRCDIR"]+"ref_MHT_vs_Tdiff_lat0_dots_plot.ncl"
+   execute_ncl_calculate(script)
+   os.system("\cp "+os.environ["HTMDIR"]+"/template3.html "+os.environ["WKDIR"]+"/AMOC_3D_Structure_overall.html")   
 #   exit()
 
 print("**************************************************")

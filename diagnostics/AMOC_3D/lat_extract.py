@@ -39,7 +39,8 @@ def lat_extract(model,fname):
     ----------------------------------------------------------------------
     '''
     import os
-    import shutil
+    import shutil 
+    import subprocess
     from post_process import execute_ncl_calculate
 #    print nc
     script=os.environ["SRCDIR"]+"lat_extract_"+fname+".ncl"
