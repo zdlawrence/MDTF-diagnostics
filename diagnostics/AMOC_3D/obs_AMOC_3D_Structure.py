@@ -1,7 +1,6 @@
 import os
 import glob
 import commands
-from post_process import convert_pdf2png_obs
 from post_process import execute_ncl_calculate
 
 if len(glob.glob(os.environ["REFDIR"]+"*.png"))==18:
@@ -68,11 +67,6 @@ execute_ncl_calculate(script)
 
 script=os.environ["SRCDIR"]+"ref_MFWT_lats_y_plot.ncl"
 execute_ncl_calculate(script)
-
-#============================================================
-# convert pdf to png
-#============================================================
-convert_pdf2png_obs()
 
 #============================================================
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")

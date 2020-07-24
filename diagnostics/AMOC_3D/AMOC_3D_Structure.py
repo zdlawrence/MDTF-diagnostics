@@ -59,8 +59,6 @@ from AMOC_3D_Structure_plot import single_ncl_test
 from post_process import create_html
 from post_process import create_html2
 from post_process import create_html3
-from post_process import convert_pdf2png
-from post_process import mv_mon_yr
 from post_process import execute_ncl_calculate
 
 #============================================================
@@ -130,19 +128,9 @@ yearly_to_climate(model,DIR_in,DIR_out, "MFWT","MFWT")
 single_ncl_test(model)
 
 #============================================================
-# move monthly and yearly files to mon_yr/
-#============================================================
-#mv_mon_yr(model)
-
-#============================================================
 # create html of QTS Figures individually
 #============================================================
 create_html(model)
-
-#============================================================
-# convert pdf to png
-#============================================================
-convert_pdf2png()
 
 #============================================================
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")
