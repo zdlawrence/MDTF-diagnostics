@@ -169,25 +169,6 @@ class MDTFFramework(object):
             print(util.pretty_print_json(case_list_in))
             exit(1)
 
-<<<<<<< HEAD
-    def caselist_from_args(self, cli_obj):
-        d = dict()
-        d2 = cli_obj.config # abbreviate
-        self._populate_from_cli(cli_obj, 'MODEL', d)
-        # remove empty entries first
-        d = {k:v for k,v in d.iteritems() if v}
-        if 'CASE_ROOT_DIR' not in d and d2.get('root_dir', None): 
-            # CASE_ROOT set positionally
-            d['CASE_ROOT_DIR'] = d2['root_dir']
-        if 'model' not in d:
-            d['model'] = 'CMIP'
-        if 'experiment' not in d:
-            d['experiment'] = ''
-        assert 'convention' in d
-        if 'CASENAME' not in d:
-            d['CASENAME'] = '{}_{}'.format(d['model'], d['experiment'])
-        return [d]
-=======
     def parse_case(self, case_tup, cli_d, cli_obj, config):
         n, d = case_tup
         if 'CASE_ROOT_DIR' not in d and 'root_dir' in d:
@@ -213,7 +194,6 @@ class MDTFFramework(object):
         # if pods set from CLI, overwrite pods in case list
         d['pod_list'] = self.set_case_pod_list(d, cli_obj, config)
         return d
->>>>>>> develop
 
     def set_case_pod_list(self, case, cli_obj, config):
         # if pods set from CLI, overwrite pods in case list
@@ -332,15 +312,11 @@ if __name__ == '__main__':
     # get dir of currently executing script: 
     cwd = os.path.dirname(os.path.realpath(__file__)) 
     code_root, src_dir = os.path.split(cwd)
-<<<<<<< HEAD
-    mdtf = MDTFFramework(code_root, os.path.join(src_dir, 'cli.jsonc'))
-=======
     defaults_rel_path = os.path.join(src_dir, 'cli.jsonc')
     if not os.path.exists(defaults_rel_path):
         # print('Warning: site-specific cli.jsonc not found, using template.')
         defaults_rel_path = os.path.join(src_dir, 'cli_template.jsonc')
     mdtf = MDTFFramework(code_root, defaults_rel_path)
->>>>>>> develop
     print("\n======= Starting {}".format(__file__))
     mdtf.main_loop()
     print("Exiting normally from {}".format(__file__))

@@ -193,13 +193,7 @@ class CLIHandler(object):
                 if attr in d:
                     d[attr] = eval(d[attr])
 
-<<<<<<< HEAD
-        # set more technical argparse options based on default value
-        if 'default' in d and 'action' not in d:
-            d['action'] = RecordDefaultsAction
-=======
         _ = d.setdefault('action', RecordDefaultsAction)
->>>>>>> develop
 
         # change help string based on default value
         if d.pop('hidden', False):
@@ -260,26 +254,6 @@ class CLIHandler(object):
         defaults = vars(self.parser.parse_args([]))
         chained_dict_list = [cli_opts] + partial_defaults + [defaults]
 
-<<<<<<< HEAD
-class FrameworkCLIHandler(CLIHandler):
-    def __init__(self, code_root, cli_rel_path):
-        self.code_root = code_root
-        cli_config = util.read_json(os.path.join(code_root, cli_rel_path))
-        self.case_list = cli_config.pop('case_list', [])
-        self.pod_list = cli_config.pop('pod_list', [])
-        self.config = dict()
-        self.parser_groups = dict()
-        self.parser_args_from_group = collections.defaultdict(list)
-        self.custom_types = collections.defaultdict(list)
-        self.parser = self.make_default_parser(cli_config, cli_rel_path)
-
-    def make_default_parser(self, d, config_path):
-        # add more standard options to top-level parser
-        _ = d.setdefault(
-            'usage',
-            ("%(prog)s [options] [INPUT_FILE] [CASE_ROOT_DIR]\n"
-                "{}%(prog)s info [TOPIC]").format(len('usage: ')*' ')
-=======
         # CLI opts override options set from file, which override defaults
         self.config = dict(ChainMap(*chained_dict_list))
 
@@ -291,7 +265,6 @@ class FrameworkCLIHandler(CLIHandler):
         self.pod_list = cli_config.pop('pod_list', [])
         super(FrameworkCLIHandler, self).__init__(
             code_root, cli_config, partial_defaults=None
->>>>>>> develop
         )
 
     def make_parser(self, d):
@@ -340,66 +313,33 @@ class FrameworkCLIHandler(CLIHandler):
     def parse_cli(self, args=None):
         # explicitly set cmd-line options, parsed according to default parser;
         # result stored in self.config
-<<<<<<< HEAD
-        super(FrameworkCLIHandler, self).parse_cli(args)
-
-        # handle positionals here because we need to find input_file
-        self.parse_positionals('input_file')
-        self.parse_positionals('root_dir')
-
-        # Options explicitly set by user on CLI; is_default = None if no default
-        cli_opts = {k:v for k,v in self.config.iteritems() \
-            if self.is_default.get(k, None) is False}
-        # full set of defaults from cli.jsonc, from running parser on empty input
-        defaults = vars(self.parser.parse_args([]))
-        chained_dict_list = [cli_opts, defaults]
-
-=======
         self.preparse_cli(args)
 
         # handle positionals here because we need to find input_file
         self.parse_positionals('input_file')
         self.parse_positionals('root_dir')
 
->>>>>>> develop
         # deal with options set in user-specified defaults file, if present
         config_path = self.config.get('INPUT_FILE', None)
         config_str = ''
         if config_path:
             try:
-<<<<<<< HEAD
-                with open(config_path, 'r') as f:
-=======
                 with io.open(config_path, 'r', encoding='utf-8') as f:
->>>>>>> develop
                     config_str = f.read()
             except Exception:
                 print("ERROR: Can't read input file at {}.".format(config_path))
         if config_str:
             try:
                 file_input = util.parse_json(config_str)
-<<<<<<< HEAD
-                print(cli_opts)
-                print('DEBUG')
-                print(file_input)
-=======
->>>>>>> develop
                 # overwrite default case_list and pod_list, if given
                 if 'case_list' in file_input:
                     self.case_list = file_input.pop('case_list')
                 if 'pod_list' in file_input:
                     self.pod_list = file_input.pop('pod_list')
                 # assume config_file a JSON dict of option:value pairs.
-<<<<<<< HEAD
-                file_input = {
-                    self.canonical_arg_name(k): v for k,v in file_input.iteritems()
-                }
-                chained_dict_list = [cli_opts, file_input, defaults]
-=======
                 self.partial_defaults = [{
                     self.canonical_arg_name(k): v for k,v in file_input.items()
                 }]
->>>>>>> develop
             except Exception:
                 if 'json' in os.path.splitext('config_path')[1].lower():
                     print("ERROR: Couldn't parse JSON in {}.".format(config_path))
@@ -407,15 +347,9 @@ class FrameworkCLIHandler(CLIHandler):
                 # assume config_file is a plain text file containing flags, etc.
                 # as they would be passed on the command line.
                 config_str = util.strip_comments(config_str, '#')
-<<<<<<< HEAD
-                file_input = vars(self.parser.parse_args(shlex.split(config_str)))
-                chained_dict_list = [cli_opts, file_input, defaults]
-
-=======
                 self.partial_defaults = [vars(
                     self.parser.parse_args(shlex.split(config_str))
                 )]
->>>>>>> develop
         # CLI opts override options set from file, which override defaults
         super(FrameworkCLIHandler, self).parse_cli(args)
 
