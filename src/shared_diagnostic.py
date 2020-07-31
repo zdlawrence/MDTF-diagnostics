@@ -1,11 +1,13 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 import os
-import sys
+from src import six
 import glob
 import shutil
-import util
-import util_mdtf
+from src import util
+from src import util_mdtf
 
+
+@six.python_2_unicode_compatible
 class PodRequirementFailure(Exception):
     """Exception raised if POD doesn't have required resoruces to run. 
     """
@@ -112,7 +114,7 @@ class Diagnostic(object):
             del d['variable_convention']
         elif not d.get('convention', None):
             d['convention'] = 'CF'
-        for key, val in d['runtime_requirements'].iteritems():
+        for key, val in iter(d['runtime_requirements'].items()):
             d['runtime_requirements'][key] = util.coerce_to_iter(val)
         if (verbose > 0): 
             print(self.name + " settings: ")
@@ -213,7 +215,7 @@ class Diagnostic(object):
         })
         # Set env vars POD has inherited globally and from current case 
         # (set in DataManager._setup_pod).
-        for key, val in self.pod_env_vars.iteritems():
+        for key, val in iter(self.pod_env_vars.items()):
             util_mdtf.setenv(key, val, self.pod_env_vars, verbose=verbose, overwrite=True) 
 
         # Set env vars for variable and axis names:
@@ -223,7 +225,7 @@ class Diagnostic(object):
             # util_mdtf.setenv(var.original_name, var.name_in_model, 
             #     self.pod_env_vars, verbose=verbose)
             # make sure axes found for different vars are consistent
-            for ax_name, ax_attrs in var.axes.iteritems():
+            for ax_name, ax_attrs in iter(var.axes.items()):
                 if 'MDTF_envvar' not in ax_attrs:
                     print(("\tWarning: don't know env var to set" 
                         "for axis name {}").format(ax_name))
@@ -248,7 +250,7 @@ class Diagnostic(object):
                             "({}!={})").format(
                                 envvar_name, axes[envvar_name], ax_name
                     ))
-        for key, val in axes.iteritems(): 
+        for key, val in iter(axes.items()): 
             util_mdtf.setenv(key, val, self.pod_env_vars, verbose=verbose)
 
     def _setup_pod_directories(self, verbose =0):
@@ -286,7 +288,7 @@ class Diagnostic(object):
             #try to find one anyway
             try_filenames = [self.name+".", "driver."]      
             file_combos = [ file_root + ext for file_root \
-                in try_filenames for ext in programs.keys()]
+                in try_filenames for ext in programs]
             if verbose > 1: 
                 print("Checking for possible driver names in {} {}".format(
                     self.POD_CODE_DIR, file_combos
@@ -324,7 +326,7 @@ class Diagnostic(object):
                 raise PodRequirementFailure(self, 
                     ("{} doesn't know how to call a .{} file.\n"
                     "Supported programs: {}").format(
-                        func_name, driver_ext, programs.keys()
+                        func_name, driver_ext, programs
                 ))
             self.program = programs[driver_ext]
             if ( verbose > 1): 
@@ -378,8 +380,8 @@ class Diagnostic(object):
                     found_list.extend(new_found)
                     missing_list.extend(new_missing)
         # remove empty list entries
-        found_list = filter(None, found_list)
-        missing_list = filter(None, missing_list)
+        found_list = [x for x in found_list if x is not None]
+        missing_list = [x for x in missing_list if x is not None]
         # nb, need to return due to recursive call
         if (verbose > 2): 
             print("check_for_varlist_files returning ", missing_list)
@@ -415,8 +417,8 @@ class Diagnostic(object):
         command = [
             command_path,
             ' -v',
-            ' -p '.join([''] + self.runtime_requirements.keys()),
-            ' -z '.join([''] + self.pod_env_vars.keys()),
+            ' -p '.join([''] + list(self.runtime_requirements)),
+            ' -z '.join([''] + list(self.pod_env_vars)),
             ' -a '.join([''] + self.runtime_requirements.get('python', [])),
             ' -b '.join([''] + self.runtime_requirements.get('ncl', [])),
             ' -c '.join([''] + self.runtime_requirements.get('Rscript', []))
@@ -501,17 +503,42 @@ class Diagnostic(object):
                 pattern = os.path.join(self.POD_WK_DIR, d, '*.'+ext)
                 files.extend(glob.glob(pattern))
         for f in files:
-            (dd, ff) = os.path.split(os.path.splitext(f)[0])
-            ff = os.path.join(os.path.dirname(dd), ff) # parent directory/filename
-            os.system('convert {0} {1} {2}.{3}'.format(
-                config.config.convert_flags, f, ff, config.config.convert_output_fmt
+            (dd, f_out) = os.path.split(os.path.splitext(f)[0])
+            path_stem = os.path.join(os.path.dirname(dd), f_out)
+            _ = util.run_shell_command(
+                'gs {flags} -sOutputFile="{f_out}" {f_in}'.format(
+                flags=config.config.get('convert_flags',''),
+                f_in=f,
+                f_out=path_stem+'-%d.png'
             ))
+            # if .ps file was multiple pages, this will generate 1 png per page.
+            # however, page number is included for output from single-page ps 
+            # files, and number starts from 1, not 0. Rename files to fix this.
+            out_files = glob.glob(path_stem+'-?.png')
+            if not out_files:
+                print("Error: no png generated for {}".format(f))
+            elif len(out_files) == 1:
+                shutil.move(out_files[0], path_stem+'.png')
+            else:
+                for n in list(range(len(out_files))):
+                    shutil.move(
+                        path_stem+'-{}.png'.format(n+1),
+                        path_stem+'-{}.png'.format(n)
+                    )
+        # also move any figures saved directly as bitmaps
+        exts = ['gif', 'png', 'jpg', 'jpeg']
+        for d in dirs:
+            for ext in exts:
+                pattern = os.path.join(self.POD_WK_DIR, d, '*.'+ext)
+                for f in glob.glob(pattern):
+                    (dd, ff) = os.path.split(f)
+                    shutil.move(f, os.path.join(os.path.dirname(dd), ff))
 
     def _cleanup_pod_files(self, config):
         """Private method called by :meth:`~shared_diagnostic.Diagnostic.tearDown`.
         """
         # copy PDF documentation (if any) to output
-        files = glob.glob(os.path.join(self.POD_CODE_DIR, '*.pdf'))
+        files = glob.glob(os.path.join(self.POD_CODE_DIR, 'doc', '*.pdf'))
         for file in files:
             shutil.copy2(file, self.POD_WK_DIR)
 

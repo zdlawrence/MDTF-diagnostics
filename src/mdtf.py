@@ -12,11 +12,11 @@
 # the LGPLv3 license (see LICENSE.txt).
 # ======================================================================
 
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 import sys
 # do version check before importing other stuff
-if sys.version_info[0] != 2 or sys.version_info[1] < 7:
-    print(("ERROR: MDTF currently only supports python 2.7.*. Please check "
+if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+    print(("ERROR: MDTF currently only supports python >= 2.7. Please check "
     "which version is on your $PATH (e.g. with `which python`.)"))
     print("Attempted to run with following python version:\n{}".format(sys.version))
     exit()
@@ -24,13 +24,13 @@ if sys.version_info[0] != 2 or sys.version_info[1] < 7:
 import os
 import signal
 import shutil
-import cli
-import util
-import util_mdtf
-import data_manager
-import environment_manager
-import shared_diagnostic
-import netcdf_helper
+from src import cli
+from src import util
+from src import util_mdtf
+from src import data_manager
+from src import environment_manager
+from src import shared_diagnostic
+from src import netcdf_helper
 
 class MDTFFramework(object):
     def __init__(self, code_root, defaults_rel_path):
@@ -69,7 +69,7 @@ class MDTFFramework(object):
 
     def _framework_init(self, code_root, defaults_rel_path):
         # set up CLI and parse arguments
-        print('\tDEBUG: argv = {}'.format(sys.argv[1:]))
+        # print('\tDEBUG: argv = {}'.format(sys.argv[1:]))
         cli_obj = cli.FrameworkCLIHandler(code_root, defaults_rel_path)
         self._cli_pre_parse_hook(cli_obj)
         cli_obj.parse_cli()
@@ -78,6 +78,7 @@ class MDTFFramework(object):
         pod_info_tuple = cli.load_pod_settings(code_root)
         # do nontrivial parsing
         config = util_mdtf.ConfigManager(cli_obj, pod_info_tuple)
+        print(util.pretty_print_json(config.paths))
         self.parse_mdtf_args(cli_obj, config)
         # config should be read-only from here on
         self._post_parse_hook(cli_obj, config)
@@ -95,9 +96,13 @@ class MDTFFramework(object):
             cli_obj.config['test_mode'] = True
 
     @staticmethod
-    def _populate_from_cli(cli_obj, group_nm, d):
+    def _populate_from_cli(cli_obj, group_nm, target_d=None):
+        if target_d is None:
+            target_d = dict()
         for key, val in cli_obj.iteritems_cli(group_nm):
-            d[key] = val
+            if val: # assign nonempty items only
+                target_d[key] = val
+        return target_d
 
     def parse_mdtf_args(self, cli_obj, config):
         """Parse script options returned by the CLI. For greater customizability,
@@ -110,17 +115,20 @@ class MDTFFramework(object):
 
     def parse_env_vars(self, cli_obj, config):
         # don't think PODs use global env vars?
-        # self._populate_from_cli(cli_obj, 'PATHS', self.envvars)
+        # self.envvars = self._populate_from_cli(cli_obj, 'PATHS', self.envvars)
         config.global_envvars['RGB'] = os.path.join(self.code_root,'src','rgb')
+        # globally enforce non-interactive matplotlib backend
+        # see https://matplotlib.org/3.2.2/tutorials/introductory/usage.html#what-is-a-backend
+        config.global_envvars['MPLBACKEND'] = "Agg"
 
     def parse_pod_list(self, cli_obj, config):
         self.pod_list = []
         args = util.coerce_to_iter(config.config.pop('pods', []), set)
         if 'example' in args or 'examples' in args:
-            self.pod_list = [pod for pod in config.pods.keys() \
+            self.pod_list = [pod for pod in config.pods \
                 if pod.startswith('example')]
         elif 'all' in args:
-            self.pod_list = [pod for pod in config.pods.keys() \
+            self.pod_list = [pod for pod in config.pods \
                 if not pod.startswith('example')]
         else:
             # specify pods by realm
@@ -130,38 +138,38 @@ class MDTFFramework(object):
                 if util.coerce_to_iter(key, set).issubset(realms):
                     self.pod_list.extend(config.pod_realms[key])
             # specify pods by name
-            pods = args.intersection(set(config.pods.keys()))
+            pods = args.intersection(set(config.pods))
             self.pod_list.extend(list(pods))
-            for arg in args.difference(set(config.pods.keys())): # remainder:
+            for arg in args.difference(set(config.pods)): # remainder:
                 print("WARNING: Didn't recognize POD {}, ignoring".format(arg))
             # exclude examples
             self.pod_list = [pod for pod in self.pod_list \
                 if not pod.startswith('example')]
+        if not self.pod_list:
+            print(("WARNING: no PODs selected to be run. Do `./mdtf info pods`"
+            " for a list of available PODs, and check your -p/--pods argument."))
+            print('Received --pods = {}'.format(list(args)))
+            exit()
 
     def parse_case_list(self, cli_obj, config):
-        d = config.config # abbreviate
-        self.case_list = []
-        if d.get('CASENAME', None) \
-            or (d.get('model', None) and d.get('experiment', None)):
-            case_list = self.caselist_from_args(cli_obj)
-        else:
-            case_list = util.coerce_to_iter(cli_obj.case_list)
-        for case_dict in case_list:
-            # remove empty entries
-            case = {k:v for k,v in case_dict.iteritems() if v}
-            if not case.get('CASE_ROOT_DIR', None) and case.get('root_dir', None):
-                case['CASE_ROOT_DIR'] = case['root_dir']
-                del case['root_dir']
-            # if dates set on CLI, overwrite dates in case list
-            if d.get('FIRSTYR', None):
-                case['FIRSTYR'] = d['FIRSTYR']
-            if d.get('LASTYR', None):
-                case['LASTYR'] = d['LASTYR']
-            # if pods set from CLI, overwrite pods in case list
-            case['pod_list'] = self.set_case_pod_list(case, cli_obj, config)
-            
-            self.case_list.append(case)
+        case_list_in = util.coerce_to_iter(cli_obj.case_list)
+        cli_d = self._populate_from_cli(cli_obj, 'MODEL')
+        if 'CASE_ROOT_DIR' not in cli_d and cli_obj.config.get('root_dir', None): 
+            # CASE_ROOT was set positionally
+            cli_d['CASE_ROOT_DIR'] = cli_obj.config['root_dir']
+        if not case_list_in:
+            case_list_in = [cli_d]
+        case_list = []
+        for case_tup in enumerate(case_list_in):
+            case_list.append(self.parse_case(case_tup, cli_d, cli_obj, config))
+        self.case_list = [case for case in case_list if case is not None]
+        if not self.case_list:
+            print("ERROR: no valid entries in case_list. Please specify model run information.")
+            print('Received:')
+            print(util.pretty_print_json(case_list_in))
+            exit(1)
 
+<<<<<<< HEAD
     def caselist_from_args(self, cli_obj):
         d = dict()
         d2 = cli_obj.config # abbreviate
@@ -179,9 +187,37 @@ class MDTFFramework(object):
         if 'CASENAME' not in d:
             d['CASENAME'] = '{}_{}'.format(d['model'], d['experiment'])
         return [d]
+=======
+    def parse_case(self, case_tup, cli_d, cli_obj, config):
+        n, d = case_tup
+        if 'CASE_ROOT_DIR' not in d and 'root_dir' in d:
+            d['CASE_ROOT_DIR'] = d.pop('root_dir')
+        case_convention = d.get('convention', '')
+        d.update(cli_d)
+        if case_convention:
+            d['convention'] = case_convention
+
+        if not ('CASENAME' in d or ('model' in d and 'experiment' in d)):
+            print(("WARNING: Need to specify either CASENAME or model/experiment "
+                "in caselist entry {}, skipping.").format(n+1))
+            return None
+        _ = d.setdefault('model', d.get('convention', ''))
+        _ = d.setdefault('experiment', '')
+        _ = d.setdefault('CASENAME', '{}_{}'.format(d['model'], d['experiment']))
+
+        for field in ['FIRSTYR', 'LASTYR', 'convention']:
+            if not d.get(field, None):
+                print(("WARNING: No value set for {} in caselist entry {}, "
+                    "skipping.").format(field, n+1))
+                return None
+        # if pods set from CLI, overwrite pods in case list
+        d['pod_list'] = self.set_case_pod_list(d, cli_obj, config)
+        return d
+>>>>>>> develop
 
     def set_case_pod_list(self, case, cli_obj, config):
         # if pods set from CLI, overwrite pods in case list
+        # already finalized self.pod-list by the time we get here
         if not cli_obj.is_default['pods'] or not case.get('pod_list', None):
             return self.pod_list
         else:
@@ -198,8 +234,9 @@ class MDTFFramework(object):
 
     def verify_paths(self, config):
         # clean out WORKING_DIR if we're not keeping temp files
-        if os.path.exists(config.paths.WORKING_DIR) and \
-            not config.config.get('keep_temp', False):
+        if os.path.exists(config.paths.WORKING_DIR) and not \
+            (config.config.get('keep_temp', False) \
+            or config.paths.WORKING_DIR == config.paths.OUTPUT_DIR):
             shutil.rmtree(config.paths.WORKING_DIR)
         util_mdtf.check_required_dirs(
             already_exist = [
@@ -215,20 +252,23 @@ class MDTFFramework(object):
         # make config nested dict for backwards compatibility
         # this is all temporary
         d = dict()
+        for n, case in enumerate(self.case_list):
+            key = 'case_list({})'.format(n)
+            d[key] = case
         d['pod_list'] = self.pod_list
-        d['case_list'] = self.case_list
         d['paths'] = config.paths
-        d['paths'].pop('_unittest_flag', None)
+        d['paths'].pop('_unittest', None)
         d['settings'] = dict()
-        settings_gps = set(cli_obj.parser_groups.keys()).difference(
+        settings_gps = set(cli_obj.parser_groups).difference(
             set(['parser','PATHS','MODEL','DIAGNOSTICS'])
         )
         for group in settings_gps:
-            self._populate_from_cli(cli_obj, group, d['settings'])
-        d['settings'] = {k:v for k,v in d['settings'].iteritems() \
+            d['settings'] = self._populate_from_cli(cli_obj, group, d['settings'])
+        d['settings'] = {k:v for k,v in iter(d['settings'].items()) \
             if k not in d['paths']}
         d['envvars'] = config.global_envvars
-        print('DEBUG: SETTINGS:\n', util.pretty_print_json(d))
+        print('DEBUG: SETTINGS:')
+        print(util.pretty_print_json(d))
 
     _dispatch_search = [
         data_manager, environment_manager, shared_diagnostic, netcdf_helper
@@ -286,11 +326,21 @@ class MDTFFramework(object):
         self.cleanup_tempdirs()
 
 
+# should move this out of "src" package, but need to create wrapper shell script
+# to set framework conda env.
 if __name__ == '__main__':
     # get dir of currently executing script: 
     cwd = os.path.dirname(os.path.realpath(__file__)) 
     code_root, src_dir = os.path.split(cwd)
+<<<<<<< HEAD
     mdtf = MDTFFramework(code_root, os.path.join(src_dir, 'cli.jsonc'))
+=======
+    defaults_rel_path = os.path.join(src_dir, 'cli.jsonc')
+    if not os.path.exists(defaults_rel_path):
+        # print('Warning: site-specific cli.jsonc not found, using template.')
+        defaults_rel_path = os.path.join(src_dir, 'cli_template.jsonc')
+    mdtf = MDTFFramework(code_root, defaults_rel_path)
+>>>>>>> develop
     print("\n======= Starting {}".format(__file__))
     mdtf.main_loop()
     print("Exiting normally from {}".format(__file__))
