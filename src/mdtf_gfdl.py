@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 import sys
 # do version check before importing other stuff
-if sys.version_info[0] != 2 or sys.version_info[1] < 7:
-    print(("ERROR: MDTF currently only supports python 2.7.*. Please check "
+if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+    print(("ERROR: MDTF currently only supports python >= 2.7. Please check "
     "which version is on your $PATH (e.g. with `which python`.)"))
     print("Attempted to run with following python version:\n{}".format(sys.version))
     exit()
@@ -12,14 +12,14 @@ if sys.version_info[0] != 2 or sys.version_info[1] < 7:
 import os
 import shutil
 import tempfile
-import util
-import util_mdtf
-import mdtf
-import data_manager
-import environment_manager
-import shared_diagnostic
-import netcdf_helper
-import gfdl
+from src import util
+from src import util_mdtf
+from src import mdtf
+from src import data_manager
+from src import environment_manager
+from src import shared_diagnostic
+from src import netcdf_helper
+from src import gfdl
 
 class GFDLMDTFFramework(mdtf.MDTFFramework):
     # add gfdl to search path for DataMgr, EnvMgr
@@ -41,7 +41,7 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
             gfdl_tmp_dir = cli_obj.config.get('GFDL_PPAN_TEMP', '$TMPDIR')
         else:
             gfdl_tmp_dir = cli_obj.config.get('GFDL_WS_TEMP', '$TMPDIR')
-        gfdl_tmp_dir = config.paths.resolve_path(
+        gfdl_tmp_dir = util.resolve_path(
             gfdl_tmp_dir, root_path=self.code_root, env=config.global_envvars
         )
         if not os.path.isdir(gfdl_tmp_dir):
@@ -64,8 +64,9 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
 
     def verify_paths(self, config):
         # clean out WORKING_DIR if we're not keeping temp files
-        if os.path.exists(config.paths.WORKING_DIR) and \
-            not config.config.get('keep_temp', False):
+        if os.path.exists(config.paths.WORKING_DIR) and not \
+            (config.config.get('keep_temp', False) \
+            or config.paths.WORKING_DIR == config.paths.OUTPUT_DIR):
             shutil.rmtree(config.paths.WORKING_DIR)
         util_mdtf.check_required_dirs(
             already_exist = [
@@ -81,16 +82,16 @@ class GFDLMDTFFramework(mdtf.MDTFFramework):
                 config.paths.OUTPUT_DIR, self.timeout, self.dry_run
             )
 
-    def set_case_pod_list(self, case_dict, config):
+    def set_case_pod_list(self, case, cli_obj, config):
         requested_pods = super(GFDLMDTFFramework, self).set_case_pod_list(
-            case_dict, config
+            case, cli_obj, config
         )
-        if not self.frepp_mode:
+        if not config.config.get('frepp', False):
             # try to run everything if not in frepp cooperative mode
             return requested_pods
         else:
             # frepp mode:only attempt PODs other instances haven't already done
-            case_outdir = config.paths.modelPaths(case_dict, overwrite=True)
+            case_outdir = config.paths.modelPaths(case, overwrite=True)
             case_outdir = case_outdir.MODEL_OUT_DIR
             for p in requested_pods:
                 if os.path.isdir(os.path.join(case_outdir, p)):
@@ -135,7 +136,11 @@ if __name__ == '__main__':
     # get dir of currently executing script: 
     cwd = os.path.dirname(os.path.realpath(__file__)) 
     code_root, src_dir = os.path.split(cwd)
-    mdtf = GFDLMDTFFramework(code_root, os.path.join(src_dir, 'defaults_gfdl.json'))
+    defaults_rel_path = os.path.join(src_dir, 'cli_gfdl.jsonc')
+    if not os.path.exists(defaults_rel_path):
+        # print('Warning: site-specific cli_gfdl.jsonc not found, using template.')
+        defaults_rel_path = os.path.join(src_dir, 'cli_template.jsonc')
+    mdtf = GFDLMDTFFramework(code_root, defaults_rel_path)
     print("\n======= Starting {}".format(__file__))
     mdtf.main_loop()
     print("Exiting normally from {}".format(__file__))
