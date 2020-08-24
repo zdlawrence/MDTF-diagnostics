@@ -57,11 +57,7 @@ def MHT_MFWT_qts_from_yearly(model,ncl_script):
             print yyyymm, yyyy0, yyyy1
 
             script=os.environ["SRCDIR"]+ncl_script
-            sname=os.path.splitext(os.path.basename(script))[0]
-            ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+yyyymm+".ncl"
-            shutil.copy(script,ncl)
             os.environ["YYYY"] = yyyy0+"-"+yyyy1
             os.environ["YEAR0"] = yyyy0
             print("COMPUTING MHT & MFWT from QTS ... "+model)
-            execute_ncl_calculate(ncl)
-            os.system("rm -f "+ncl)
+            execute_ncl_calculate(script)

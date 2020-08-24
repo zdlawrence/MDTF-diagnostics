@@ -44,8 +44,5 @@ def lat_extract(model,fname):
     from post_process import execute_ncl_calculate
 #    print nc
     script=os.environ["SRCDIR"]+"lat_extract_"+fname+".ncl"
-    ncl=os.environ["SRCDIR"]+"lat_extract_"+fname+"_"+model+".ncl"
-    shutil.copy(script,ncl)
     print("Extracting Atlantic Latitude ...")
-    execute_ncl_calculate(ncl)
-    os.system("rm -f "+ncl)
+    execute_ncl_calculate(script)

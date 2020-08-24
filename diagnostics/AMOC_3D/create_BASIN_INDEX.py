@@ -40,22 +40,13 @@ def create_BASIN(model,DIR_out,fname):
     import subprocess
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"create_BASIN_step1.ncl"
-    sname=os.path.splitext(os.path.basename(script))[0]
-    ncl=os.environ["SRCDIR"]+sname+"_"+fname+".ncl"
-    shutil.copy(script,ncl)
     os.environ["VAR0"] = fname
-
     print("Initializing Surface BASIN INDEX ...")
-    execute_ncl_calculate(ncl)
-    os.system("rm -f "+ncl)
+    execute_ncl_calculate(script)
 
     script=os.environ["SRCDIR"]+"create_BASIN_step3.ncl"
-    sname=os.path.splitext(os.path.basename(script))[0]
-    ncl=os.environ["SRCDIR"]+sname+"_"+fname+".ncl"
-    shutil.copy(script,ncl)
     print("Finalizing Surface BASIN INDEX ...")
-    execute_ncl_calculate(ncl)
-    os.system("rm -f "+ncl)
+    execute_ncl_calculate(script)
 
     fp2=open(os.environ["OUTDIR"]+model+".BASIN_"+fname+"_step.txt","r")
     num=fp2.readline()[0:-1]
@@ -103,10 +94,6 @@ def create_INDEX(model,DIR_out,fname):
     import subprocess
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"create_INDEX.ncl"
-    sname=os.path.splitext(os.path.basename(script))[0]
-    ncl=os.environ["SRCDIR"]+sname+"_"+fname+".ncl"
-    shutil.copy(script,ncl)
     os.environ["VAR0"] = fname
     print("COMPUTING 3D BASIN INDEX ...")
-    execute_ncl_calculate(ncl)
-    os.system("rm -f    "+ncl)
+    execute_ncl_calculate(script)

@@ -47,7 +47,6 @@ def trans_lats_monthly(model,DIR_in,DIR_out):
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+os.environ["vmo_var"]+"_??????-??????.mon*.nc")
     num_vmo_files=len(ncs)
     script=os.environ["SRCDIR"]+"trans_lats_monthly.ncl"
-    sname=os.path.splitext(os.path.basename(script))[0]
     if num_vmo_files > 0:
         for nc in ncs:
     #          print nc
@@ -57,10 +56,7 @@ def trans_lats_monthly(model,DIR_in,DIR_out):
             yyyy1 = yyyymm[7:11]
             print yyyymm, yyyy0, yyyy1
 
-            ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+yyyymm+".ncl"
-            shutil.copy(script,ncl)
             os.environ["YYYYMM"] = yyyymm
             os.environ["YEAR0"] = yyyy0
             print("Projecting vmo onto T/S plane ...")
-            execute_ncl_calculate(ncl)
-            os.system("rm -f "+ncl)
+            execute_ncl_calculate(script)

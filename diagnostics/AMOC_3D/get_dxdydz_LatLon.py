@@ -53,9 +53,6 @@ def get_dxdydz_LatLon(model,fname):
     os.environ["DEPTHO"]=os.path.basename(nc)
 
     script=os.environ["SRCDIR"]+"get_dxdydz_LatLon.ncl"
-    sname=os.path.splitext(os.path.basename(script))[0]
-    ncl=os.environ["SRCDIR"]+sname+"_"+model+"_"+fname+".ncl"
-    shutil.copy(script,ncl)
 
     os.environ["DIR_IN3"] = os.environ["FIXDIR"]
     os.environ["THKCELLO"]= model+".thkcello.fx.nc"
@@ -74,8 +71,7 @@ def get_dxdydz_LatLon(model,fname):
     os.environ["VAR0"] = fname
     
     print("COMPUTING Grid Size ...")
-    execute_ncl_calculate(ncl)
-    os.system("rm -f "+ncl)
+    execute_ncl_calculate(script)
 
     #    if (fix == "True" and fname != "vo"):
     #       script2=os.environ["SRCDIR"]+"interp_vit_to_viv_dxdydz.ncl"

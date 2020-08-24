@@ -49,16 +49,11 @@ def recover_vmo_by_vo(model,DIR_in,DIR_out):
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         script=os.environ["SRCDIR"]+"split_vmo_into_yearly.ncl"
-        sname=os.path.splitext(os.path.basename(script))[0]
         ncs = glob.glob(os.environ["MONDIR"]+model+"."+os.environ["vmo_var"]+".mon*.nc")
     else:              
         script=os.environ["SRCDIR"]+"recover_vmo_by_vo.ncl"
-        sname=os.path.splitext(os.path.basename(script))[0]
         ncs = glob.glob(os.environ["MONDIR"]+model+"."+os.environ["vo_var"]+".mon*.nc")
 
     for nc in ncs:
-        ncl=os.environ["SRCDIR"]+sname+"_"+model+".ncl"
-        shutil.copy(script,ncl)
         print("COMPUTING Volume Transport ...")
-        execute_ncl_calculate(ncl)
-        os.system("rm -f "+ncl)
+        execute_ncl_calculate(script)
