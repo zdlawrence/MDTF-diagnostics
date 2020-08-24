@@ -18,7 +18,7 @@
       "LAT0": "26.5"
     },
     "runtime_requirements": {
-      "python": [],
+      "python2": [],
       "ncl": ["contributed", "gsn_code", "gsn_csm", "shea_util", "diagnostics_cam"]
     }
   },
