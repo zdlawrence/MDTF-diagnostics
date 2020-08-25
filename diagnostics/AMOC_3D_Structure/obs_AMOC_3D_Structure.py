@@ -80,8 +80,8 @@ if num_png==num_model:
     execute_ncl_calculate(script)
     script=os.environ["SRCDIR"]+"ref_MHT_vs_Tdiff_lat0_dots_plot.ncl"
     execute_ncl_calculate(script)
-    os.system("\cp "+os.environ["HTMDIR"]+"/template3.html "+os.environ["WKDIR"]+"/AMOC_3D_Structure_overall.html")   
-    #   exit()
+else:
+    print 'Error: num_png != num_model ({},{})'.format(num_png,num_model)
 
 print("**************************************************")
 print("obs_AMOC_3D_Structure Package (obs_AMOC_3D_Structure.py) Executed!")

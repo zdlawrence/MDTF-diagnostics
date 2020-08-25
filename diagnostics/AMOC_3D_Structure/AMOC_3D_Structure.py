@@ -56,9 +56,6 @@ from AMOC_qts_from_yearly import AMOC_qts_from_yearly
 from trans_wgt_TS_yearly import trans_wgt_TS_yearly
 from MHT_MFWT_qts_from_yearly import MHT_MFWT_qts_from_yearly
 from AMOC_3D_Structure_plot import single_ncl_test
-from post_process import create_html
-from post_process import create_html2
-from post_process import create_html3
 from post_process import execute_ncl_calculate
 
 #============================================================
@@ -128,16 +125,9 @@ yearly_to_climate(model,DIR_in,DIR_out, "MFWT","MFWT")
 single_ncl_test(model)
 
 #============================================================
-# create html of QTS Figures individually
-#============================================================
-create_html(model)
-
-#============================================================
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")
 num_model=str(len(os.environ["MODELS"].split()))
 if num_png==num_model:
-    #   create_html3()
-    #   exit()
     script=os.environ["SRCDIR"]+"sum_Q_lat0_z_plot.ncl"
     execute_ncl_calculate(script)
     script=os.environ["SRCDIR"]+"sum_T_lat0_z_plot.ncl"
@@ -172,9 +162,6 @@ if num_png==num_model:
     execute_ncl_calculate(script)
     script=os.environ["SRCDIR"]+"MHT_vs_Tdiff_lat0_dots_plot.ncl"
     execute_ncl_calculate(script)
-    #   create_html2()
-    create_html3()
-    #   exit()
 
 print("**************************************************")
 print("AMOC_3D_Structure Package (AMOC_3D_Structure.py) Executed!")
