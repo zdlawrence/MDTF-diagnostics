@@ -37,7 +37,7 @@ lat0       = stringtofloat(getenv("LAT0"))
 models     = str_split(getenv("MODELS"), " ,")
 
 so_var     = getenv("so_var")
-lat_var    = getenv("lat_var")
+lat_var    = getenv("lat_coord")
 
 num_model=dimsizes(models)
 

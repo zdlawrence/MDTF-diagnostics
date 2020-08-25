@@ -58,8 +58,8 @@ lat0       = stringtofloat(getenv("LAT0"))
 models = str_split(getenv("MODELS"), " ,")
 num_model=dimsizes(models)
 
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 if(lat0.ge.0)then
   res@gsnCenterString = "Latitude: "+tostring_with_format(lat0,"%4.1f")+"~S~o~N~N"

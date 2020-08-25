@@ -16,8 +16,8 @@ yymm=getenv("YYYYMM")
 yyyy=getenv("YYYY")
 year0=getenv("YEAR0")
 
-time_var = getenv("time_var")
-lat_var = getenv("lat_var")
+time_var = getenv("time_coord")
+lat_var = getenv("lat_coord")
 
 ncs0 = "TMP.sigma2.fx.nc"
 ncs1 = model+"."+lat_var+"_vo.fx.nc"

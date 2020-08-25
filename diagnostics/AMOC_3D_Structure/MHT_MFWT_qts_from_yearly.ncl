@@ -10,8 +10,8 @@ DIR_in2    = getenv("TMPDIR")
 DIR_out    = getenv("TMPDIR")
 lat0       = stringtofloat(getenv("LAT0"))
 
-time_var = getenv("time_var")
-lat_var = getenv("lat_var")
+time_var = getenv("time_coord")
+lat_var = getenv("lat_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

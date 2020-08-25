@@ -12,7 +12,7 @@ lat0       = stringtofloat(getenv("LAT0"))
 
 thetao_var = getenv("thetao_var")
 so_var     = getenv("so_var")
-lat_var    = getenv("lat_var")
+lat_var    = getenv("lat_coord")
 
 wks   = gsn_open_wks("pdf",DIR_out+"ref_trans_lat0_climate_TS_plot")
 gsn_define_colormap(wks,"BlRe")

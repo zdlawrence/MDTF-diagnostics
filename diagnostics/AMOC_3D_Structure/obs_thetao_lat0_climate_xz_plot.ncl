@@ -162,8 +162,8 @@ DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
 
 thetao_var = getenv("thetao_var")
-lat_var = getenv("lat_var")
-lon_var = getenv("lon_var")
+lat_var = getenv("lat_coord")
+lon_var = getenv("lon_coord")
 
 ncs2=(/"WOA13.thetao_viv.clim.nc"/)
 models=(/"WOA13"/)

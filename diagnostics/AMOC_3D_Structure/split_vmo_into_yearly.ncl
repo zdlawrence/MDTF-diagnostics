@@ -5,7 +5,7 @@ DIR_out = getenv("TMPDIR")
 
 
 vmo_var = getenv("vmo_var")
-time_var = getenv("time_var")
+time_var = getenv("time_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

@@ -57,8 +57,8 @@ DIR_in     = getenv("OUTDIR")
 DIR_out    = getenv("FIGDIR")
 lat0       = stringtofloat(getenv("LAT0"))
 
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

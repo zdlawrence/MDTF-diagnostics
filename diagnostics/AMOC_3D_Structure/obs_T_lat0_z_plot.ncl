@@ -57,8 +57,8 @@ DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
 
 thetao_var = getenv("thetao_var")
-lat_var    = getenv("lat_var")
-lev_var    = getenv("lev_var")
+lat_var    = getenv("lat_coord")
+lev_var    = getenv("lev_coord")
 
 models     = str_split(getenv("MODELS"), " ,")
 

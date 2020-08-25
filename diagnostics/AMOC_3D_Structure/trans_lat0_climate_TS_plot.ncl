@@ -21,7 +21,7 @@ DIR_in5    = getenv("OUTDIR")
 
 thetao_var = getenv("thetao_var")
 so_var = getenv("so_var")
-lat_var = getenv("lat_var")
+lat_var = getenv("lat_coord")
 
 
 wks   = gsn_open_wks("pdf",DIR_out+"trans_lat0_climate_TS_plot")

@@ -145,8 +145,8 @@ DIR_in0    = getenv("CLMREF")
 DIR_in1    = getenv("FIXREF")
 DIR_out    = getenv("FIGREF")
 
-lev_var    = getenv("lev_var")
-lat_var    = getenv("lat_var")
+lev_var    = getenv("lev_coord")
+lat_var    = getenv("lat_coord")
 
 ncs=(/"HYCOM.AMOC_qts.clim.nc"/)
 

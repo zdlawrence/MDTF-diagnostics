@@ -71,8 +71,8 @@ DIR_out    = getenv("FIGDIR")
 lat0       = stringtofloat(getenv("LAT0"))
 
 so_var  = getenv("so_var")
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 bas_var = getenv("bas_var")
 
 model=getenv("CASENAME")

@@ -77,8 +77,8 @@ else
 end if
 
 thetao_var  = getenv("thetao_var")
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 models = str_split(getenv("MODELS"), " ,") 
 num_model=dimsizes(models)

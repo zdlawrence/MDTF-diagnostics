@@ -11,10 +11,10 @@ begin
 
  vo_var = getenv("VAR0")
  bas_var = getenv("bas_var")
- time_var = getenv("time_var")
- lev_var = getenv("lev_var")
- lat_var = getenv("lat_var")
- lon_var = getenv("lon_var")
+ time_var = getenv("time_coord")
+ lev_var = getenv("lev_coord")
+ lat_var = getenv("lat_coord")
+ lon_var = getenv("lon_coord")
 
  model=getenv("CASENAME")
  yymm=getenv("YYYYMM")

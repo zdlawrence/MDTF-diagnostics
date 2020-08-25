@@ -36,7 +36,7 @@ DIR_out=getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
 models     = str_split(getenv("MODELS"), " ,")
 
-lat_var    = getenv("lat_var")
+lat_var    = getenv("lat_coord")
 
 num_model=dimsizes(models)
 

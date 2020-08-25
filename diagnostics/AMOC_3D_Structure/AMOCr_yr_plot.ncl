@@ -144,8 +144,8 @@ DIR_in     = getenv("OUTDIR")
 DIR_in0    = getenv("OUTDIR")
 DIR_out    = getenv("FIGDIR")
 
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

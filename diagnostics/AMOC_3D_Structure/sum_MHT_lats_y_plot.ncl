@@ -45,14 +45,14 @@ DIR_in1 = getenv("WKDIR")
 DIR_out = getenv("WKDIR")
 lat0    = stringtofloat(getenv("LAT0"))
 
-lat_var = getenv("lat_var")
+lat_var = getenv("lat_coord")
 
 models = str_split(getenv("MODELS"), " ,") 
 num_model=dimsizes(models)
 
 thetao_var  = getenv("thetao_var")
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 ncs0="HYCOM.MHT.clim.nc"
 

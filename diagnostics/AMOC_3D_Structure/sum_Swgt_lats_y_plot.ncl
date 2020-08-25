@@ -44,8 +44,8 @@ models = str_split(getenv("MODELS"), " ,")
 num_model=dimsizes(models)
 
 so_var  = getenv("so_var")
-lev_var = getenv("lev_var")
-lat_var = getenv("lat_var")
+lev_var = getenv("lev_coord")
+lat_var = getenv("lat_coord")
 
 ncs0="HYCOM.so_wgt.clim.nc"
 

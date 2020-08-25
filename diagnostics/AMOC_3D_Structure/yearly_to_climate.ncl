@@ -9,7 +9,7 @@ DIR_in0=getenv("TMPDIR")
 DIR_out=getenv("OUTDIR")
 which=getenv("which_mean")
 
-time_var = getenv("time_var")
+time_var = getenv("time_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

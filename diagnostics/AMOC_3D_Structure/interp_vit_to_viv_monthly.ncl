@@ -12,7 +12,7 @@ thetao_var = getenv("thetao_var")
 so_var = getenv("so_var")
 vmo_var = getenv("vmo_var")
 bas_var = getenv("bas_var")
-time_var = getenv("time_var")
+time_var = getenv("time_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

@@ -11,8 +11,8 @@ DIR_out    = getenv("TMPDIR")
 
 thetao_var = getenv("thetao_var")
 so_var = getenv("so_var")
-time_var = getenv("time_var")
-lat_var = getenv("lat_var")
+time_var = getenv("time_coord")
+lat_var = getenv("lat_coord")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")

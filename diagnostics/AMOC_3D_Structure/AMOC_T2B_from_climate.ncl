@@ -12,7 +12,7 @@ DIR_out=getenv("OUTDIR")
 
 vmo_var = getenv("vmo_var")
 bas_var = getenv("bas_var")
-lat_var = getenv("lat_var")
+lat_var = getenv("lat_coord")
 lev_bnds_var = getenv("lev_bnds_var")
 
 model=getenv("CASENAME")
