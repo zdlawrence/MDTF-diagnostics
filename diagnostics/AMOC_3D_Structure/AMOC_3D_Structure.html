@@ -1,0 +1,194 @@
+<HTML>
+
+<HEAD>
+    <metv="Content-Type" content="text/html; charset=utf-8" />
+    <TITLE>MDTF Variability Diagnostics</TITLE>
+    <IMG SRC="mdtf_diag_banner.png" border=0 usemap="#logo">
+    <BR clear=left>
+</HEAD>
+
+<div class="with_lineTitle">
+    <span class="line"></span>
+    <b>
+        <span class="Tbox">AMOC 3D Structure</span>
+    </b>
+    <span class="line"></span>
+</div>
+
+<style>
+    .with_lineTitle{display: flex;align-items: center;justify-content: center;}
+    .with_lineTitle .line{size: 1;height: 1px;background-color: grey;width: 38%;}
+    .with_lineTitle .Tbox{padding: 0% 0%;height: 1px;color: navy}
+</style>
+
+<BODY BGCOLOR="white">
+
+<TABLE cellspacing="10" border="0">
+    <TH ALIGH=LEFT><font color=navy>One Latitude (26.5N)
+    <TR>
+    <TH ALIGH=CENTER><font color=red>Core Results
+    <TH ALIGH=CENTER>MHT vs max(&Psi;<sub>&sigma;</sub>)
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>MHT vs &theta;</sub>1</sub>-&theta;</sub>2</sub>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>MFWT vs max(&Psi;<sub>&sigma;</sub>)
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>MFWT vs S</sub>1</sub>-S</sub>2</sub>
+    <TD>&nbsp;</TD>
+    <TR>
+    <TH ALIGH=LEFT>Long term mean
+    <TH ALIGH=CENTER><A HREF=obs/ref_MHT_vs_AMOCr_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/ref_MHT_vs_Tdiff_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/ref_MFWT_vs_AMOCr_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/ref_MFWT_vs_Sdiff_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TR>
+    <TH ALIGH=LEFT>User selected years
+    <TH ALIGH=CENTER><A HREF=obs/MHT_vs_AMOCr_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/MHT_vs_Tdiff_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/MFWT_vs_AMOCr_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/MFWT_vs_Sdiff_lat0_dots.png>plot</A>
+    <TD>&nbsp;</TD>
+</TABLE>
+
+<TABLE cellspacing="10" border="0">
+    <HR style="border:1 dashed #987cb9" width="80%" color=grey SIZE=1 ALIGH=RIGHT>
+    <TR>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>Transport Q(x,z)
+    <TH ALIGH=CENTER>Streamfunction &Psi;<sub>z</sub>(z)
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>Temperature &theta;(x,z)
+    <TH ALIGH=CENTER>&theta;(z)
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>Salinity S(x,z)
+    <TH ALIGH=CENTER>S(z)
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>Q(&theta;,S)
+    <TH ALIGH=CENTER>&Psi;<sub>&sigma;</sub>(&sigma;)
+    <TH ALIGH=CENTER>&Psi;<sub>&theta;</sub>(&theta;)
+    <TH ALIGH=CENTER>&Psi;<sub>S</sub>(S)
+    <TR>
+    <TH ALIGH=LEFT>Observation or<br>High-res Model
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/obs_Q_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/obs_thetao_lat0_climate_xz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/obs_T_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/obs_so_lat0_climate_xz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/obs_S_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_trans_lat0_climate_TS_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCr_r_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCT_T_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCS_S_plot.png>plot</A>
+    <TR>
+    <TH ALIGH=LEFT>CanESM2
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/vmo_lat0_climate_xz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/Q_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/thetao_lat0_climate_xz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/T_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/so_lat0_climate_xz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/S_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/trans_lat0_climate_TS_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCr_r_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCT_T_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCS_S_plot.png>plot</A>
+    <TR>
+    <TR>
+    <TH ALIGH=CENTER><font color=red>Summary
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/sum_Q_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/sum_T_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/sum_S_lat0_z_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/Twgt_vs_Swgt_lat0_dots_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_AMOCr_r_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_AMOCT_T_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_AMOCS_S_plot.png>plot</A>
+    <TR>
+    <TR>
+    <TR>
+    <TH ALIGH=LEFT><font color=navy>Latitudinal Variation
+    <TR>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER>Layer Q(y) 
+    <TH ALIGH=CENTER>Layer &theta;</sub>(y)
+    <TH ALIGH=CENTER>Layer S(y)
+    <TH ALIGH=CENTER>&Psi;<sub>z</sub>(y,z)
+    <TH ALIGH=CENTER>&Psi;<sub>&sigma;</sub>(y,&sigma;)
+    <TH ALIGH=CENTER>&Psi;<sub>&theta;</sub>(y,&theta;)
+    <TH ALIGH=CENTER>&Psi;<sub>S</sub>(y,S)
+    <TH ALIGH=CENTER>Heat Transport
+    <TH ALIGH=CENTER>Freshwater Tansport
+    <TR>
+    <TH ALIGH=LEFT>High-res Model
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_Qavg_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_Twgt_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_Swgt_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCz_yz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCr_yr_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCT_yT_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_AMOCS_yS_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_MHT_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/obs/ref_MFWT_lats_y_plot.png>plot</A>
+    <TR>
+    <TH ALIGH=LEFT>CanESM2
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/Qavg_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/Twgt_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/Swgt_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCz_yz_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCr_yr_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCT_yT_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/AMOCS_yS_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/MHT_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=../../MDTF_CanESM2/AMOC_3D_Structure/model/MFWT_lats_y_plot.png>plot</A>
+    <TR>
+    <TR>
+    <TH ALIGH=CENTER><font color=red>Summary
+    <TH ALIGH=CENTER><A HREF=obs/sum_Qavg_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_Twgt_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_Swgt_lats_y_plot.png>plot</A>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TD>&nbsp;</TD>
+    <TH ALIGH=CENTER><A HREF=obs/sum_MHT_lats_y_plot.png>plot</A>
+    <TH ALIGH=CENTER><A HREF=obs/sum_MFWT_lats_y_plot.png>plot</A>
+    <TR>
+</TABLE>
+</BODY>
+</HTML>
+<TR>
