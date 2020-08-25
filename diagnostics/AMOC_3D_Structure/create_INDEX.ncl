@@ -63,7 +63,6 @@ begin
     vit(num_lev-1,:,:)=vit@_FillValue
   end if
  
-       system("rm "+DIR_in0(1)+model+".INDEX_"+vo_var+".fx.nc")
   fout    = addfile(DIR_in0(1)+model+".INDEX_"+vo_var+".fx.nc","c")
   fout->$bas_var$ = vit
   fout->$lat_var$ = lat1

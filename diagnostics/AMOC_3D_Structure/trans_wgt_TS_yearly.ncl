@@ -407,15 +407,12 @@ end if
    tmp&time@long_name="time"
    tmp&time@units    ="days since 1850-01-01 00:00"
    
-   system("rm -f "+DIR_out+model+"."+thetao_var+"_wgt_"+yyyy+".yr.nc")
    fout  = addfile(DIR_out+model+"."+thetao_var+"_wgt_"+yyyy+".yr.nc","c")
    fout->$thetao_var$ = Tavg
    
-   system("rm -f "+DIR_out+model+"."+so_var+"_wgt_"+yyyy+".yr.nc")
    fout  = addfile(DIR_out+model+"."+so_var+"_wgt_"+yyyy+".yr.nc","c")
    fout->$so_var$ = Savg
    
-   system("rm -f "+DIR_out+model+".trans_avg_"+yyyy+".yr.nc")
    fout  = addfile(DIR_out+model+".trans_avg_"+yyyy+".yr.nc","c")
    fout->trans = Qavg
 

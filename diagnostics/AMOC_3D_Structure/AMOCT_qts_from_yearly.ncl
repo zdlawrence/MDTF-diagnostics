@@ -152,7 +152,6 @@ do j=0,jmt-1
 end do  
 end do  
 ;=============================================================================
-     system("rm "+DIR_out+model+".AMOCT_qts_"+yyyy+".yr.nc")
 fout    = addfile(DIR_out+model+".AMOCT_qts_"+yyyy+".yr.nc","c")
 fout->moc = moc
 fout->moc_max = moc_max

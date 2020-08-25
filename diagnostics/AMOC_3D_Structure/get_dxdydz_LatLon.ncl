@@ -195,7 +195,6 @@ dz_conform@units    ="m"
 
 setfileoption("nc","Format","LargeFile")
 
-  system("rm "+DIR_out+model+".dxdydz_"+vo_var+".fx.nc")
 fout = addfile(DIR_out+model+".dxdydz_"+vo_var+".fx.nc","c")
 ;=============================================================================
 do n=0,nums-1

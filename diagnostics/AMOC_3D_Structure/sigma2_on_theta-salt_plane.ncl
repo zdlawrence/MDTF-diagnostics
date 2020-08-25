@@ -114,7 +114,6 @@ sig2&salt=salt
 sig2&lat=lat
 ;printVarSummary(sig2)
 ;---------------------------------------------------------------------
-  system("rm "+DIR_out+"TMP.sigma2.fx.nc")
 fout = addfile(DIR_out+"TMP.sigma2.fx.nc","c")
 ;=============================================================================
 fout->sig2 = sig2

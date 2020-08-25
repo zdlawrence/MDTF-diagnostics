@@ -160,7 +160,6 @@ if(num_lat.eq.1)then
   rrr=lat
 end if
 
-system("rm "+DIR_out+model+"."+lat_var+"_vo.fx.nc")
 fout = addfile(DIR_out+model+"."+lat_var+"_vo.fx.nc","c")
 ;=============================================================================
 fout->$lat_var$ = rrr

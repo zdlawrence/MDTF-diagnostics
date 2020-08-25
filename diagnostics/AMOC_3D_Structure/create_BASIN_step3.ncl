@@ -74,7 +74,6 @@ do while(count0.lt.100)
        ;;; User might set inner lakes to -9999, if want.
      end if
 
-;         system("rm "+DIR_in0+model+".BASIN_"+vo_var+"_step"+count1+".nc")
     fout    = addfile(DIR_in0+model+".BASIN_"+vo_var+"_step"+count1+".nc","c")
     fout->$bas_var$ = vit
     fout->$lat_var$ = lat0

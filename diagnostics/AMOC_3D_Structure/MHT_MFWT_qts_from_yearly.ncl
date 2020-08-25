@@ -359,11 +359,9 @@ do y=0,ymt-1
    tmp&time@long_name="time"
    tmp&time@units    ="days since 1850-01-01 00:00"
    
-   system("rm -f "+DIR_out+model+".MHT_"+yyyy+".yr.nc")
    fout  = addfile(DIR_out+model+".MHT_"+yyyy+".yr.nc","c")
    fout->MHT = MHT
    
-   system("rm -f "+DIR_out+model+".MFWT_"+yyyy+".yr.nc")
    fout  = addfile(DIR_out+model+".MFWT_"+yyyy+".yr.nc","c")
    fout->MFWT = MFWT
    

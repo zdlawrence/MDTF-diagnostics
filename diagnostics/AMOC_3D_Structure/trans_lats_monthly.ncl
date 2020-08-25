@@ -171,7 +171,6 @@ end do ;;; j loop
   trans@units    ="Sv"
 ;  printVarSummary(trans)
 ;----------------------------------------------------------------------------------------------------
-    system("rm "+DIR_out+model+".trans_"+yyyymm+".mon.nc")
   fout = addfile(DIR_out+model+".trans_"+yyyymm+".mon.nc","c")
   ;=============================================================================
   fout->trans = trans

@@ -112,7 +112,6 @@ end do
 vit@long_name  = "Index on T grids"
 vit@units  = "0Land,1Arc,2Atl,3Ind,4Pac,5-7Atl_Ind_Pac in SO"
 
-  system("rm "+DIR_out+model+".BASIN_"+vo_var+"_step1.nc")
 fout = addfile(DIR_out+model+".BASIN_"+vo_var+"_step1.nc","c")
 fout->$bas_var$ = vit
 fout->$lat_var$ = lat1

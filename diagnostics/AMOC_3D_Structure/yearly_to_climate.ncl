@@ -87,7 +87,6 @@ end if
 ;print("Extra Coords:"+Names)
 ;print("Out variables: "+oNames)
 
-  system("rm "+DIR_out+model+"."+str0+".clim.nc")
 fout = addfile(DIR_out+model+"."+str0+".clim.nc","c")
 do n=0,nums-1
    if(Names(n).eq."")then

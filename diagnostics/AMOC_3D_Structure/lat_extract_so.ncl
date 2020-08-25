@@ -157,7 +157,6 @@ if(num_lat.eq.1)then
    rrr=lat
 end if
 
-  system("rm "+DIR_out+model+"."+lat_var+"_so.fx.nc")
 fout = addfile(DIR_out+model+"."+lat_var+"_so.fx.nc","c")
 ;=============================================================================
 fout->$lat_var$ = rrr

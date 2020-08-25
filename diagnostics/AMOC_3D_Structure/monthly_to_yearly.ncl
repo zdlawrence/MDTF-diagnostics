@@ -75,7 +75,6 @@ do y=0,num_year-1
 end do
 tmp&time = tim0
 
-  system("rm "+DIR_out+model+"."+str0+"_"+yyyy+".yr.nc")
 fout = addfile(DIR_out+model+"."+str0+"_"+yyyy+".yr.nc","c")
 do n=0,nums-1
    if(Names(n).eq."")then

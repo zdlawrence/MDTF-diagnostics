@@ -164,7 +164,6 @@ do j=0,num_lat-1
 end do  
 end do  
 ;=============================================================================
-     system("rm "+DIR_out+model+".AMOC_T2B.clim.nc")
 fout    = addfile(DIR_out+model+".AMOC_T2B.clim.nc","c")
 fout->moc = moc
 fout->moc_max = moc_max
