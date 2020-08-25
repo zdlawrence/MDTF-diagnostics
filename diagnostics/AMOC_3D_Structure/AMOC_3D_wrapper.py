@@ -10,7 +10,6 @@ import runpy
 # os.path.join to null string adds a terminal '/' if not present
 
 os.environ["SRCDIR"] = os.path.join(os.environ["POD_HOME"], "")
-os.environ["HTMDIR"] = os.path.join(os.environ["POD_HOME"], "htmls")
 
 # in v1.0, this was a comma-delimited string of model names; only run one model
 # per POD invocation now
@@ -33,6 +32,10 @@ os.environ["OUTDIR"] = os.path.join(os.environ["WK_DIR"], "model", "netCDF", "")
 os.environ["TMPDIR"] = os.path.join(os.environ["WK_DIR"], "model", "netCDF", "mon_yr", "")
 os.environ["FIGREF"] = os.path.join(os.environ["WK_DIR"], "obs", "PS", "")
 os.environ["PNGREF"] = os.path.join(os.environ["WK_DIR"], "obs", "")
+
+# not in framework's default set of working directories and not created by POD's 
+# code
+os.makedirs(os.environ["TMPDIR"])
 
 # Call top-level POD scripts from current process
 # ==============================================================================
