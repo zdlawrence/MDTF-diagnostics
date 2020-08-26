@@ -77,8 +77,12 @@ def moisture_variance(imax, jmax, zmax, lon1, lon2, lat1, lat2, lon, lat, plev, 
     for j in range(jj1, jj2):
         for i in range (ii1, ii2):
             if(ts[i,j] < undef):  
+                if(ts[i,j] > 0.9 * undef):  
+                    print "MSE_VAR_DEBUG: allowed value that's 90% of undef"
                 cc = cc + ts[i,j]*ts[i,j]   
                 ss = ss + 1.
+            else:
+                print "MSE_VAR_DEBUG: correctly excluded sentinel value"
 ##    endif enddo
     if( ss > 0.):
         ts_var = cc/ss
