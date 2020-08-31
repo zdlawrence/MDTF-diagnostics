@@ -1,0 +1,9 @@
+name: _MDTF_AMOC_3D_Structure
+channels:
+- conda-forge # NOTE: critical to give highest priority to conda-forge
+- defaults
+dependencies:
+- python=2.7
+- subprocess32
+- ncl=6.6.2
+- cdo # called as a dependency in AMOC_3D_Structure/interp_vit_to_viv_monthly.ncl
