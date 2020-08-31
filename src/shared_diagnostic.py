@@ -251,7 +251,7 @@ class Diagnostic(object):
                     ))
         for key, val in axes.items():
             # Define ax bounds variables; TODO do this more honestly
-            ax_bnds[key+'_bnds'] = var + '_bnds'
+            ax_bnds[key+'_bnds'] = val + '_bnds'
         for key, val in axes.items(): 
             util_mdtf.setenv(key, val, self.pod_env_vars, verbose=verbose)
         for key, val in ax_bnds.items(): 
