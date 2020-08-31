@@ -13,7 +13,7 @@ DIR_out=getenv("OUTDIR")
 vmo_var = getenv("vmo_var")
 bas_var = getenv("bas_var")
 lat_var = getenv("lat_coord")
-lev_bnds_var = getenv("lev_bnds_var")
+lev_coord_bnds = getenv("lev_coord_bnds")
 
 model=getenv("CASENAME")
 yymm=getenv("YYYYMM")
@@ -40,7 +40,7 @@ vit = dim_sum_n_Wrap(temp,2)
 delete(temp)
 
 fin2 = addfile(DIR_in2+ncs2,"r")
-lev2 = fin2->$lev_bnds_var$
+lev2 = fin2->$lev_coord_bnds$
 vmo  = fin2->$vmo_var$
 if(max(vmo(0:1,:,:)).gt.1e7)then
    vmo  = vmo / 1e9

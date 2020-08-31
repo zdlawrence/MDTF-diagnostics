@@ -15,8 +15,8 @@ time_var = getenv("time_coord")
 lev_var = getenv("lev_coord")
 lat_var = getenv("lat_coord")
 lon_var = getenv("lon_coord")
-time_bnds_var = getenv("time_bnds_var")
-lev_bnds_var = getenv("lev_bnds_var")
+time_coord_bnds = getenv("time_coord_bnds")
+lev_coord_bnds = getenv("lev_coord_bnds")
 deptho_var = getenv("deptho_var")
 thkcello_var = getenv("thkcello_var")
 
@@ -74,10 +74,10 @@ deptho=fin1->$deptho_var$
 deptho=abs(deptho)
 
 tim      = dble2flt(fin0->$time_var$(0:num_tim-1))
-;tim_bnds = dble2flt(fin0->$time_bnds_var$(0:num_tim-1,:))
+;tim_bnds = dble2flt(fin0->$time_coord_bnds$(0:num_tim-1,:))
 
 lev      = dble2flt(fin0->$lev_var$)
-lev_bnds = dble2flt(fin0->$lev_bnds_var$)
+lev_bnds = dble2flt(fin0->$lev_coord_bnds$)
 lev      = abs(lev)
 lev_bnds = abs(lev_bnds)
 
