@@ -102,7 +102,7 @@ do nn=0,num_line-1
 
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in1=getenv("WKDIR")+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+      DIR_in1=getenv("WKDIR")+"model/netCDF/"
       nc = DIR_in1+model+".thetao_wgt.clim.nc"
       print("Loading ... "+nc)
       fin = addfile(nc,"r")
@@ -135,7 +135,7 @@ do nn=0,num_line-1
 ;----------------------------------------------------------------------------------------------------
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in1=getenv("WKDIR")+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+      DIR_in1=getenv("WKDIR")+"model/netCDF/"
       nc = DIR_in1+model+".thetao_wgt.clim.nc"
       print("Loading ... "+nc)
       fin = addfile(nc,"r")

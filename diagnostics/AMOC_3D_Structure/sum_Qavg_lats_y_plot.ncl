@@ -128,7 +128,7 @@ end if
 
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+      DIR_in=DIR_in1+"model/netCDF/"
       nc=model+".trans_avg.clim.nc"
 ;      print("Loading ... "+nc)
       fin = addfile(DIR_in+nc,"r")
@@ -153,7 +153,7 @@ end if
    res@xyLineThicknessF = 2.0
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+      DIR_in=DIR_in1+"model/netCDF/"
       nc=model+".trans_avg.clim.nc"
 ;      print("Loading ... "+nc)
       fin = addfile(DIR_in+nc,"r")

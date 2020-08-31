@@ -96,7 +96,7 @@ out=new((/num_model,num_lev/),"double",1e20)
 
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in1=getenv("WKDIR")+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in1=getenv("WKDIR")+"model/netCDF/"
   nc = DIR_in1+model+".lat_vo.fx.nc"
   print("Loading ... "+nc)
   fin = addfile(nc,"r")
@@ -135,7 +135,7 @@ res@trXMaxF = xmax
 
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in1=getenv("WKDIR")+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in1=getenv("WKDIR")+"model/netCDF/"
   nc = DIR_in1+model+".lat_vo.fx.nc"
   print("Loading ... "+nc)
   fin = addfile(nc,"r")

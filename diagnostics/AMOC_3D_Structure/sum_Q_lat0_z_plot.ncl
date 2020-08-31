@@ -98,7 +98,7 @@ xmin=min(REF)
 xmax=max(REF)
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in=DIR_in1+"model/netCDF/"
   nc=model+".AMOC_T2B.clim.nc"
 ;  print("Loading ... "+nc)
   fin = addfile(DIR_in+nc,"r")
@@ -121,7 +121,7 @@ res@trXMaxF = xmax
 ;---------------------------------------------------------------------------------------------------- plot
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in=DIR_in1+"model/netCDF/"
   nc=model+".AMOC_T2B.clim.nc"
   fin = addfile(DIR_in+nc,"r")
   lat = fin->$lat_var$

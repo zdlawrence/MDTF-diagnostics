@@ -81,7 +81,7 @@ do j=1,1
 
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in0+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in=DIR_in0+"model/netCDF/"
   nc=model+".MFWT.clim.nc"
   fil = addfile(DIR_in+nc,"r")
   latT=fil->lat

@@ -100,7 +100,7 @@ xmin=min(REF)
 xmax=max(REF)
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in=DIR_in1+"model/netCDF/"
 
   nc = model+"."+lat_var+"_vo.fx.nc"
 ;  print("Loading ... "+nc)
@@ -132,7 +132,7 @@ res@tmYLPrecision      =2
 ;---------------------------------------------------------------------------------------------------- plot
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"/MDTF_"+model+"/AMOC_3D_Structure/model/netCDF/"
+  DIR_in=DIR_in1+"model/netCDF/"
 
   nc = model+"."+lat_var+"_vo.fx.nc"
 ;  print("Loading ... "+nc)

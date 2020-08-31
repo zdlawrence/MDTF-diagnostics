@@ -25,6 +25,7 @@ os.environ["MONDIR"] = os.path.join(os.environ["DATADIR"], "mon", "")
 os.environ["FIXDIR"] = os.path.join(os.environ["DATADIR"], "fx", "")
 
 # paths for output files in POD's working directory
+os.environ["WKDIR"] = os.path.join(os.environ["WK_DIR"], "")
 os.environ["QTSDIR"] = os.path.join(os.environ["WK_DIR"], "")
 os.environ["PNGDIR"] = os.path.join(os.environ["WK_DIR"], "model", "")
 os.environ["FIGDIR"] = os.path.join(os.environ["WK_DIR"], "model", "PS", "")
