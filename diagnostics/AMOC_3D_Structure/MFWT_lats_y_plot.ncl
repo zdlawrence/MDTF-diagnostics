@@ -141,10 +141,6 @@ do mm=0,num_line-1
    delete(lat)
 end do
 
-do mm=1,num_line-1
-;  overlay(plot(0),plot(mm))
-end do
-
 do mm=0,num_line-1
   overlay(plot(0),plot1(mm))
 end do
