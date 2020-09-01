@@ -38,6 +38,14 @@ os.environ["PNGREF"] = os.path.join(os.environ["WK_DIR"], "obs", "")
 # code
 os.makedirs(os.environ["TMPDIR"])
 
+# Set path env var so that NCL can find our custom colormap 
+# (diagnostics/AMOC_3D_Structure/xuxb.rgb)
+# see https://www.ncl.ucar.edu/Document/Graphics/create_color_table.shtml
+os.environ["NCARG_COLORMAPS"] = ":".join([
+    os.environ["POD_HOME"],
+    os.path.join(os.environ["NCARG_ROOT"], "lib", "ncarg", "colormaps")
+])
+
 # Call top-level POD scripts from current process
 # ==============================================================================
 # 1.  Pre-processing for CMIP5_Atlantic_QTS
