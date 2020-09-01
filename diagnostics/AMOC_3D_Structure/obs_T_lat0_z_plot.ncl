@@ -70,7 +70,7 @@ else
 end if
 
 ncs0="WOA13.thetao_viv.clim.nc"
-ncs2=model+".INDEX_vo.fx.nc"
+; ncs2=model+".INDEX_vo.fx.nc"
 
 plot = new(num_model,graphic)
 plot0= new(1,graphic)
@@ -108,6 +108,7 @@ do mm=0,num_model-1
   lat = fin->$lat_var$
   jjj = minind(abs(lat-lat0))
 
+  ncs2=model+".INDEX_vo.fx.nc"
   nc = DIR_in2+ncs2
   print("Now,the nc is:   "+nc)
   fin = addfile(nc,"r")
@@ -161,9 +162,9 @@ do mm=0,num_model-1
   delete(lev)
   delete(var)
 end do
-do mm=1,num_model-1
-;   overlay(plot(0),plot(mm))
-end do
+;do mm=1,num_model-1
+;;   overlay(plot(0),plot(mm))
+;end do
 
 delete(res@xyLineColor)
 res@xyDashPattern = 0

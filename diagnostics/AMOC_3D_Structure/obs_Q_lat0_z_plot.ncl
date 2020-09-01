@@ -71,7 +71,7 @@ else
 end if
 
 ncs0="RAPID.sf26.clim.nc"
-ncs1=model+"."+lat_var+"_vo.fx.nc"
+; ncs1=model+"."+lat_var+"_vo.fx.nc"
 
 plot = new(num_model,graphic)
 plot0 = new(1,graphic)
@@ -145,9 +145,9 @@ do mm=0,num_model-1
    delete(var)
 end do  
 
-do mm=1,num_model-1
-;   overlay(plot(0),plot(mm))
-end do
+;do mm=1,num_model-1
+;;   overlay(plot(0),plot(mm))
+;end do
 
 delete(res@xyLineColor)
 res@xyDashPattern = 0
