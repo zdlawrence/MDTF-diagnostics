@@ -43,6 +43,7 @@ def AMOC_qts_from_yearly(model,ncl_script):
     import subprocess
     from post_process import execute_ncl_calculate
     ncs = glob.glob(os.environ["TMPDIR"]+model+".trans_????-????.yr*.nc")
+    ncs.sort()
     print("ncs:---------------------------------")
     print(ncs)
     num_vmo_files=len(ncs)

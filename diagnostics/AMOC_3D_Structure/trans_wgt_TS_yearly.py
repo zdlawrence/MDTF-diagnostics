@@ -46,6 +46,7 @@ def trans_wgt_TS_yearly(model):
 #    print model,DIR_in,DIR_out
     script=os.environ["SRCDIR"]+"trans_wgt_TS_yearly.ncl"
     ncs = glob.glob(os.environ["TMPDIR"]+model+".trans_????-????.yr.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         for nc in ncs:

@@ -44,6 +44,7 @@ def interp_vit_to_viv_monthly(model,DIR_in,DIR_out):
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"interp_vit_to_viv_monthly.ncl"
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+os.environ["vmo_var"]+"_??????-??????.mon*.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         for nc in ncs:

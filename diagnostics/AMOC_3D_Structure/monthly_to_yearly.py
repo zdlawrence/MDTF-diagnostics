@@ -40,6 +40,7 @@ def monthly_to_yearly(model,DIR_in,DIR_out,fname,vname):
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"monthly_to_yearly.ncl"
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+fname+"_??????-??????.mon*.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         for nc in ncs:

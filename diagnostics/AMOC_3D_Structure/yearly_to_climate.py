@@ -49,6 +49,7 @@ def yearly_to_climate(model,DIR_in,DIR_out,fname,vname):
     from post_process import execute_ncl_calculate
     script=os.environ["SRCDIR"]+"yearly_to_climate.ncl"
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+fname+"_????-????.yr.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         os.environ["STR0"] = fname

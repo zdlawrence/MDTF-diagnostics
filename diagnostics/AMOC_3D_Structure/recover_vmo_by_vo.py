@@ -54,6 +54,7 @@ def recover_vmo_by_vo(model,DIR_in,DIR_out):
         script=os.environ["SRCDIR"]+"recover_vmo_by_vo.ncl"
         ncs = glob.glob(os.environ["MONDIR"]+model+"."+os.environ["vo_var"]+".mon*.nc")
 
+    ncs.sort()
     for nc in ncs:
         print("COMPUTING Volume Transport ...")
         execute_ncl_calculate(script)

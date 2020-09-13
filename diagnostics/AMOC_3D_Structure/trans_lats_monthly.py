@@ -45,6 +45,7 @@ def trans_lats_monthly(model,DIR_in,DIR_out):
     import subprocess
     from post_process import execute_ncl_calculate
     ncs = glob.glob(os.environ["TMPDIR"]+model+"."+os.environ["vmo_var"]+"_??????-??????.mon*.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     script=os.environ["SRCDIR"]+"trans_lats_monthly.ncl"
     if num_vmo_files > 0:

@@ -46,6 +46,7 @@ def MHT_MFWT_qts_from_yearly(model,ncl_script):
     from post_process import execute_ncl_calculate
 #    print model,DIR_in,DIR_out
     ncs = glob.glob(os.environ["TMPDIR"]+model+".trans_????-????.yr.nc")
+    ncs.sort()
     num_vmo_files=len(ncs)
     if num_vmo_files > 0:
         for nc in ncs:
