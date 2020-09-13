@@ -127,7 +127,7 @@ single_ncl_test(model)
 #============================================================
 (status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.pdf' | wc -l")
 num_model=str(len(os.environ["MODELS"].split()))
-if num_png==num_model:
+if num_png.strip()==num_model.strip():
     script=os.environ["SRCDIR"]+"sum_Q_lat0_z_plot.ncl"
     execute_ncl_calculate(script)
     script=os.environ["SRCDIR"]+"sum_T_lat0_z_plot.ncl"
