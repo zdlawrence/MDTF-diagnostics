@@ -69,7 +69,7 @@ script=os.environ["SRCDIR"]+"ref_MFWT_lats_y_plot.ncl"
 execute_ncl_calculate(script)
 
 #============================================================
-(status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.png' | wc -l")
+(status, num_png) = commands.getstatusoutput("find "+os.environ["WKDIR"]+" -depth -name 'MFWT_lats_y_plot.pdf' | wc -l")
 num_model=str(len(os.environ["MODELS"].split()))
 if num_png==num_model:
     script=os.environ["SRCDIR"]+"ref_MFWT_vs_AMOCr_lat0_dots_plot.ncl"
