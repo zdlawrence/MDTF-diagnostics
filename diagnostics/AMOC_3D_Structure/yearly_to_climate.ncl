@@ -19,7 +19,7 @@ var0=getenv("VAR0")
 
 setfileoption("nc","Format","LargeFile")
 
-files = systemfunc("ls "+DIR_in0+model+"."+str0+"_????-????.yr.nc")
+files = systemfunc("ls "+DIR_in0+model+"."+str0+"_????-????.yr.nc | sort")
 f=addfiles(files,"r")
 tmt=dimsizes(f[:]->$time_var$)
 
