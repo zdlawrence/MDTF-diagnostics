@@ -56,6 +56,7 @@ lat0       = stringtofloat(getenv("LAT0"))
 models     = str_split(getenv("MODELS"), " ,")
 
 so_var     = getenv("so_var")
+bas_var = getenv("bas_var")
 lat_var    = getenv("lat_coord")
 lev_var    = getenv("lev_coord")
 
