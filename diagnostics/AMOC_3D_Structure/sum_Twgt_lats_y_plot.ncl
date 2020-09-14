@@ -47,7 +47,7 @@ lat_var = getenv("lat_coord")
 
 ncs0="HYCOM.thetao_wgt.clim.nc"
 
-wks = gsn_open_wks("png",DIR_out+"/sum_Twgt_lats_y_plot")
+wks = gsn_open_wks("pdf",DIR_out+"/sum_Twgt_lats_y_plot")
 
 if(num_model.le.20)then
   gsn_define_colormap(wks,"xbxu")

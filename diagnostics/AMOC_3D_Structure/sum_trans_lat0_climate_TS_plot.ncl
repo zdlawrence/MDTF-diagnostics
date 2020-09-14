@@ -74,7 +74,7 @@ plot = new(num_model,graphic)
 plot1 = new(1,graphic)
 plot2 = new(1,graphic)
 
-wks   = gsn_open_wks("png",DIR_out+"/sum_trans_lat0_climate_TS_plot")
+wks   = gsn_open_wks("pdf",DIR_out+"/sum_trans_lat0_climate_TS_plot")
 if(num_model.le.20)then
   gsn_define_colormap(wks,"xbxu")
   colors=floattoint(fspan(2,21,num_model))

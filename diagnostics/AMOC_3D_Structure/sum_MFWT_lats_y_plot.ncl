@@ -56,7 +56,7 @@ lat_var = getenv("lat_coord")
 
 ncs0="HYCOM.MFWT.clim.nc"
 
-wks = gsn_open_wks("png",DIR_out+"/sum_MFWT_lats_y_plot")
+wks = gsn_open_wks("pdf",DIR_out+"/sum_MFWT_lats_y_plot")
 if(num_model.le.20)then
   gsn_define_colormap(wks,"xbxu")
   colors=floattoint(fspan(2,21,num_model))

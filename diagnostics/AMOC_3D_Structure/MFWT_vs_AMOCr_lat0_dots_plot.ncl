@@ -119,7 +119,7 @@ plot2 = new(1,graphic)
 plot3 = new(1,graphic)
 plot4 = new(1,graphic)
 
-wks = gsn_open_wks("png",DIR_out+"/MFWT_vs_AMOCr_lat0_dots")
+wks = gsn_open_wks("pdf",DIR_out+"/MFWT_vs_AMOCr_lat0_dots")
 if(num_model.le.20)then
   gsn_define_colormap(wks,"xbxu")
   colors=floattoint(fspan(2,21,num_model+1))
