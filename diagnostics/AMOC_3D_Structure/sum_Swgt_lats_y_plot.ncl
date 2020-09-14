@@ -223,7 +223,7 @@ colorss(num_model)=1
 modelss(num_model)="20-CMIP5 average"
 dashess(num_model)=1
 colorss(num_model+1)=1
-modelss(num_model+1)="This model:~C~"+getenv("CASENAME")
+modelss(num_model+1)="HYCOM"
 dashess(num_model+1)=0
 ;print(dashess)
 

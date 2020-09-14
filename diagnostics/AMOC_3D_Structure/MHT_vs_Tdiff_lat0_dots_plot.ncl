@@ -273,7 +273,7 @@ colorss(num_model)=1
 modelss(num_model)="20-CMIP5 average"
 markers(num_model+1)=16
 colorss(num_model+1)=1
-modelss(num_model+1)="This model:~C~"+getenv("CASENAME")
+modelss(num_model+1)="HYCOM"
 
 xpos= 0.85
 ypos=fspan(0.425,0.95,num_model+2)
