@@ -71,7 +71,7 @@ orders=ispan(1,num_model+2,1)
 ;  upper, middle0, lower0, middle_min, lower_min, total  
 ; i = 0       1       2
 ;   Net, Positive, Negative
-ks=(/5/)
+ks=(/0/)
 is=(/0/)
 factors = (/1/)
 
@@ -145,7 +145,7 @@ kk=0
    i=is(kk)
 do mm=0,num_model-1
    model=models(mm)
-   DIR_in=DIR_in1+"model/netCDF/"
+   DIR_in=DIR_in1
 
    nc=model+".MHT.clim.nc"
 ;   print("Loading ... "+nc)
