@@ -14,6 +14,13 @@ os.environ["SRCDIR"] = os.path.join(os.environ["POD_HOME"], "")
 # in v1.0, this was a comma-delimited string of model names; only run one model
 # per POD invocation now
 os.environ["MODELS"] = os.environ["CASENAME"].replace(' ', '_')
+# CMIP5 ensemble models used for comparison in summary plots; clim data
+# provided in obs_data
+os.environ["CMIP5_CLIM_MODELS"] = (
+    "ACCESS1-3,bcc-csm1-1-m,CanESM2,CCSM4,CMCC-CESM,CNRM-CM5-2,CSIRO-Mk3-6-0,"
+    "EC-EARTH,FGOALS-s2,FIO-ESM,GFDL-CM2p1,GFDL-ESM2G,GISS-E2-R,HadGEM2-CC,"
+    "IPSL-CM5A-MR,MIROC5,MIROC-ESM,MPI-ESM-MR,MRI-CGCM3,NorESM1-M"
+)
 
 # obs data paths
 os.environ["REFDIR"] = os.path.join(os.environ["OBS_DATA"], "")
