@@ -119,6 +119,7 @@ plot1 = new(1,graphic)
 plot2 = new(1,graphic)
 plot3 = new(1,graphic)
 plot4 = new(1,graphic)
+plot5 = new(1,graphic)
 
 wks = gsn_open_wks("pdf",DIR_out+"/MFWT_vs_Sdiff_lat0_dots")
 if(num_model.le.20)then
@@ -259,15 +260,48 @@ res0@gsMarkerIndex = 16
 res0@gsMarkerColor = 1 
 plot3 = gsn_add_polymarker(wks,plot0,Sdiff0,MFWT0,res0)
 
+;======================================= model being analyzed =======================================
+DIR_in2 = getenv("OUTDIR")
+model = getenv("CASENAME")
+nc = model+".MFWT.clim.nc"
+fil = addfile(DIR_in2+nc,"r")
+latT=fil->lat
+jjj=minind(abs(lat0-latT))
+delete(latT)
+tmp=fil->MFWT(0,jjj,0)
+if(max(abs(tmp)).gt.100)then
+  tmp=tmp/1e3
+end if
+if(max(abs(tmp)).gt.100)then
+  tmp=tmp/1e3
+end if
+MFWT0=tmp
+delete(tmp)
+
+nc = model+".so_wgt.clim.nc"
+;print("Now,the nc is: "+nc)
+fil= addfile(DIR_in2+nc,"r")
+lat= fil->lat
+jjj=ind_nearest_coord(lat0,lat,0)
+tmp1 = fil->so(0,jjj,3)
+tmp2 = fil->so(2,jjj,3)
+Sdiff0 = tmp1
+Sdiff0 = tmp1 - tmp2
+
+delete(lat)
+res0@gsMarkerIndex = 12
+res0@gsMarkerColor = 1 
+plot5 = gsn_add_polymarker(wks,plot0,Sdiff0,MFWT0,res0)
+
 ;====================================================================================================
 mkres = True
 txres = True ; Text resources
 txres@txFontHeightF = 0.012
 txres@txJust= "CenterLeft"
 
-markers=new(num_model+2,typeof(marker))
-colorss=new(num_model+2,typeof(colors))
-modelss=new(num_model+2,typeof(models))
+markers=new(num_model+3,typeof(marker))
+colorss=new(num_model+3,typeof(colors))
+modelss=new(num_model+3,typeof(models))
 markers(0:num_model-1)=(/marker/)
 colorss(0:num_model)=(/colors/)
 modelss(0:num_model-1)=(/models/)
@@ -277,12 +311,15 @@ modelss(num_model)="20-CMIP5 average"
 markers(num_model+1)=16
 colorss(num_model+1)=1
 modelss(num_model+1)="HYCOM"
+markers(num_model+2)=12
+colorss(num_model+2)=1
+modelss(num_model+2)="This model:~C~"+getenv("CASENAME")
 
 xpos= 0.85
-ypos=fspan(0.425,0.95,num_model+2)
+ypos=fspan(0.425,0.95,num_model+3)
 ypos=ypos(::-1)
 ;print(""+ypos)
-do mm=0,num_model+1
+do mm=0,num_model+2
   mkres@gsMarkerThicknessF = 3.0 
   mkres@gsMarkerSizeF= 0.015
   mkres@gsMarkerIndex= markers(mm)
