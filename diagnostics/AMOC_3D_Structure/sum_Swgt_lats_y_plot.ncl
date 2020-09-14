@@ -37,10 +37,10 @@ res@xyLineThicknessF = 2.0
 res@tmYLPrecision      =2
 
 DIR_in0=getenv("CLMREF")
-DIR_in1=getenv("WKDIR")
-DIR_out=getenv("WKDIR")
+DIR_in1=getenv("CLMREF")
+DIR_out=getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
-models = str_split(getenv("MODELS"), " ,") 
+models = str_split(getenv("CMIP5_CLIM_MODELS"), " ,") 
 num_model=dimsizes(models)
 
 so_var  = getenv("so_var")
@@ -130,7 +130,7 @@ end if
 
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in=DIR_in1+"model/netCDF/"
+      DIR_in=DIR_in1
       nc=model+".so_wgt.clim.nc"
 ;      print("Loading ... "+nc)
       fin = addfile(DIR_in+nc,"r")
@@ -155,7 +155,7 @@ end if
    res@xyLineThicknessF = 2.0
    do mm=0,num_model-1
       model=models(mm)
-      DIR_in=DIR_in1+"model/netCDF/"
+      DIR_in=DIR_in1
       nc=model+".so_wgt.clim.nc"
 ;      print("Loading ... "+nc)
       fin = addfile(DIR_in+nc,"r")
@@ -241,6 +241,7 @@ labels = modelss
 nitems = dimsizes(labels)                 ; number of legend items
 half=orders(0:nitems/2-1)-1
 lgres@lgItemOrder        = half(::-1)
+print("DEBUG "+nitems)
 
 lgres@lgLineColors       = colorss(0:nitems/2-1)
 lgres@lgDashIndexes      = dashess(0:nitems/2-1)

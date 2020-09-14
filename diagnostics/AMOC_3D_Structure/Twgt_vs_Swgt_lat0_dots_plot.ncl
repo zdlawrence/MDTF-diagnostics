@@ -65,9 +65,9 @@ resc@cnLineDashSegLenF        =0.3
 resc@cnLevels = (/27.65/)
 
 DIR_in     = getenv("OUTDIR")
-DIR_in0    = getenv("WKDIR")
+DIR_in0    = getenv("CLMREF")
 DIR_in1    = getenv("CLMREF")
-DIR_out    = getenv("WKDIR")
+DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
 
 if(lat0.ge.0)then
@@ -80,7 +80,7 @@ thetao_var  = getenv("thetao_var")
 lev_var = getenv("lev_coord")
 lat_var = getenv("lat_coord")
 
-models = str_split(getenv("MODELS"), " ,") 
+models = str_split(getenv("CMIP5_CLIM_MODELS"), " ,") 
 num_model=dimsizes(models)
 
 ;====================================================================================================
@@ -94,10 +94,14 @@ res@xyMarkers          = marker
 res@xyMarkerColors     = "white"
 ;====================================================================================================
 
-plot  = new((/num_model,3/),graphic)
-plot0 = new(3,graphic)
-plot1 = new(3,graphic)
-plot2 = new(3,graphic)
+; plot  = new((/num_model,3/),graphic)
+; plot0 = new(3,graphic)
+; plot1 = new(3,graphic)
+; plot2 = new(3,graphic)
+plot  = new(num_model,graphic)
+plot0 = new(1,graphic)
+plot1 = new(1,graphic)
+plot2 = new(1,graphic)
 
 wks = gsn_open_wks("pdf",DIR_out+"/Twgt_vs_Swgt_lat0_dots_plot")
 if(num_model.le.20)then
@@ -141,7 +145,7 @@ ss=new((/5,4,num_model/),"double",1e20)
 
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in0+"model/netCDF/"
+  DIR_in=DIR_in0
   nc=model+".thetao_wgt.clim.nc"
   fin = addfile(DIR_in+nc,"r")
   latT=fin->lat
@@ -153,7 +157,7 @@ do mm=0,num_model-1
   delete(latT)
   delete(tmp)
 
-  DIR_in=DIR_in0+"model/netCDF/"
+  DIR_in=DIR_in0
   nc=model+".so_wgt.clim.nc"
   fin = addfile(DIR_in+nc,"r")
   latS=fin->lat
@@ -188,7 +192,8 @@ res@gsMarkerSizeF      = 0.015
 do mm=0,num_model-1
   res@gsMarkerIndex = marker(mm)
   res@gsMarkerColor = colors(mm)
-  plot(mm,0) = gsn_add_polymarker(wks,plot0(0),ss(0:3:3,3,mm),tt(0:3:3,3,mm),res)  ;;; Layered abs T/S
+  plot(mm) = gsn_add_polymarker(wks,plot0(0),ss(0:3:3,3,mm),tt(0:3:3,3,mm),res)  ;;; Layered abs T/S
+;  plot(mm,0) = gsn_add_polymarker(wks,plot0(0),ss(0:3:3,3,mm),tt(0:3:3,3,mm),res)  ;;; Layered abs T/S
 ;  plot(mm,1) = gsn_add_polymarker(wks,plot0(1),ss(0:3:3,1,mm),tt(0:3:3,1,mm),res)  ;;; Layered pos T/S
 ;  plot(mm,2) = gsn_add_polymarker(wks,plot0(2),ss(0:3:3,2,mm),tt(0:3:3,2,mm),res)  ;;; Layered neg T/S
 end do

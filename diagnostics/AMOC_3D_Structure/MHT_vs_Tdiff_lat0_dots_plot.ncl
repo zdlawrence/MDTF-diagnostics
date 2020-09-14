@@ -40,11 +40,11 @@ res@tiYAxisOffsetXF   = 0.02
 
 res1=res
 
-DIR_in0    = getenv("WKDIR")
+DIR_in0    = getenv("CLMREF")
 DIR_in1    = getenv("CLMREF")
-DIR_out    = getenv("WKDIR")
+DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
-models = str_split(getenv("MODELS"), " ,")
+models = str_split(getenv("CMIP5_CLIM_MODELS"), " ,")
 
 num_model=dimsizes(models)
 ;print(""+models)
@@ -81,7 +81,7 @@ do j=1,1
 
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in0+"model/netCDF/"
+  DIR_in=DIR_in0
   nc=model+".MHT.clim.nc"
   fil = addfile(DIR_in+nc,"r")
   latT=fil->lat

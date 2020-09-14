@@ -53,7 +53,7 @@ res@trYReverse                  = True
 ;---------------------------------------------------------------------------------------------------- Enviromental variables
 DIR_in0    = getenv("CLMREF")
 DIR_in1    = getenv("WKDIR")
-DIR_out    = getenv("WKDIR")
+DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
 models = str_split(getenv("MODELS"), " ,")
 num_model=dimsizes(models)
@@ -76,8 +76,12 @@ plot2 = new(1,graphic)
 
 wks   = gsn_open_wks("pdf",DIR_out+"/sum_T_lat0_z_plot")
 if(num_model.le.20)then
-  gsn_define_colormap(wks,"xbxu")
-  colors=floattoint(fspan(2,21,num_model))
+  gsn_define_colormap(wks,"xbxu")  
+  if(num_model.eq.1)then
+    colors=(/2/)
+  else
+    colors=floattoint(fspan(2,21,num_model))
+  end if
 else
   gsn_define_colormap(wks,"amwg256")
   colors=floattoint(fspan(2,255,num_model))

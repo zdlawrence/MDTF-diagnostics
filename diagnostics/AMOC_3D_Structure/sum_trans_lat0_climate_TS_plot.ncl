@@ -52,10 +52,10 @@ res@trYReverse                  = True
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;---------------------------------------------------------------------------------------------------- Enviromental variables
 DIR_in0    = getenv("CLMREF")
-DIR_in1    = getenv("WKDIR")
-DIR_out    = getenv("WKDIR")
+DIR_in1    = getenv("CLMREF")
+DIR_out    = getenv("FIGREF")
 lat0       = stringtofloat(getenv("LAT0"))
-models = str_split(getenv("MODELS"), " ,")
+models = str_split(getenv("CMIP5_CLIM_MODELS"), " ,")
 num_model=dimsizes(models)
 
 thetao_var  = getenv("thetao_var")
@@ -101,7 +101,7 @@ xmin=min(REF)
 xmax=max(REF)
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"model/netCDF/"
+  DIR_in=DIR_in1
 
   nc = model+"."+lat_var+"_vo.fx.nc"
 ;  print("Loading ... "+nc)
@@ -130,7 +130,7 @@ res@tmXBPrecision      =2
 ;---------------------------------------------------------------------------------------------------- plot
 do mm=0,num_model-1
   model=models(mm)
-  DIR_in=DIR_in1+"model/netCDF/"
+  DIR_in=DIR_in1
 
   nc = model+"."+lat_var+"_vo.fx.nc"
 ;  print("Loading ... "+nc)

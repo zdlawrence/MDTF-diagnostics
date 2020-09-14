@@ -41,13 +41,13 @@ begin
 ;res@gsnStringFontHeightF=0.028
 
 DIR_in0 = getenv("CLMREF")
-DIR_in1 = getenv("WKDIR")
-DIR_out = getenv("WKDIR")
+DIR_in1 = getenv("CLMREF")
+DIR_out = getenv("FIGREF")
 lat0    = stringtofloat(getenv("LAT0"))
 
 lat_var = getenv("lat_coord")
 
-models = str_split(getenv("MODELS"), " ,") 
+models = str_split(getenv("CMIP5_CLIM_MODELS"), " ,") 
 num_model=dimsizes(models)
 
 thetao_var  = getenv("thetao_var")
@@ -112,10 +112,10 @@ kk=0
    i=is(kk)
 do mm=0,num_model-1
    model=models(mm)
-   DIR_in=DIR_in1+"model/netCDF/"
+   DIR_in=DIR_in1
 
    nc=model+".MFWT.clim.nc"
-;   print("Loading ... "+nc)
+   print("Loading ... "+nc)
    fin = addfile(DIR_in+nc,"r")
    var = fin->MFWT(k,:,i)
    lat = fin->lat
