@@ -223,7 +223,7 @@ colorss(num_model)=1
 modelss(num_model)="20-CMIP5 average"
 dashess(num_model)=1
 colorss(num_model+1)=1
-modelss(num_model+1)="high-res. model"
+modelss(num_model+1)="This model:~C~"+getenv("CASENAME")
 dashess(num_model+1)=0
 ;print(dashess)
 
@@ -241,7 +241,6 @@ labels = modelss
 nitems = dimsizes(labels)                 ; number of legend items
 half=orders(0:nitems/2-1)-1
 lgres@lgItemOrder        = half(::-1)
-print("DEBUG "+nitems)
 
 lgres@lgLineColors       = colorss(0:nitems/2-1)
 lgres@lgDashIndexes      = dashess(0:nitems/2-1)

@@ -234,7 +234,7 @@ colorss(num_model)=1
 modelss(num_model)="20-CMIP5 average"
 markers(num_model+1)=16
 colorss(num_model+1)=1
-modelss(num_model+1)="high-res. model"
+modelss(num_model+1)="This model:~C~"+getenv("CASENAME")
 
 xpos= 0.815
 ypos=fspan(0.205,0.80,num_model+2)
