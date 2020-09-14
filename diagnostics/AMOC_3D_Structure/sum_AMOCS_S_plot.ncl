@@ -159,13 +159,13 @@ do mm=1,num_model-1
 end do
 
 ;---------------------------------------------------------------------------------------------------- plot model mean
-MME=dim_avg_n_Wrap(out,0)
-res@xyDashPattern = 1
-res@xyLineColor = 1
-res@xyLineThicknessF      = 5
-plot1 = gsn_csm_xy (wks,MME,LEV,res)
-overlay(plot(0),plot1)
-delete(MME)
+; MME=dim_avg_n_Wrap(out,0)
+; res@xyDashPattern = 1
+; res@xyLineColor = 1
+; res@xyLineThicknessF      = 5
+; plot1 = gsn_csm_xy (wks,MME,LEV,res)
+; overlay(plot(0),plot1)
+; delete(MME)
 ;---------------------------------------------------------------------------------------------------- plot reference
 res@xyDashPattern = 0
 res@xyLineColor = 1
@@ -175,18 +175,15 @@ overlay(plot(0),plot2)
 delete(REF)
 
 ;---------------------------------------------------------------------------------------------------- legend
-colorss=new(num_model+2,typeof(colors))
-modelss=new(num_model+2,typeof(models))
-dashess=orders
+colorss=new(num_model+1,typeof(colors))
+modelss=new(num_model+1,typeof(models))
+dashess=ispan(1,num_model+1,1)
 colorss(0:num_model-1)=(/colors/)
 modelss(0:num_model-1)=(/models/)
 dashess(0:num_model-1)=0
 colorss(num_model)=1
-modelss(num_model)="20-CMIP5 average"
-dashess(num_model)=1
-colorss(num_model+1)=1
-modelss(num_model+1)="WOA13"
-dashess(num_model+1)=0
+modelss(num_model)="WOA13"
+dashess(num_model)=0
 ;print(dashess)
 
 lgres                    = True
