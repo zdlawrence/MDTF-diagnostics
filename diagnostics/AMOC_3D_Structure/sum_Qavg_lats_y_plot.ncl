@@ -178,12 +178,12 @@ end if
       delete(lat)
    end do
 
-   var  = dim_avg_n_Wrap(out,0)
-   res@xyLineThicknessF = 5.0
-   res@xyDashPattern    = 1
-   res@xyLineColor      = 1
-   plot0(nn) = gsn_csm_xy (wks,LAT,var(nn,:),res)
-   delete(var)
+   ; var  = dim_avg_n_Wrap(out,0)
+   ; res@xyLineThicknessF = 5.0
+   ; res@xyDashPattern    = 1
+   ; res@xyLineColor      = 1
+   ; plot0(nn) = gsn_csm_xy (wks,LAT,var(nn,:),res)
+   ; delete(var)
 
 ;----------------------------------------------------------------------------------------------------
 ; HYCOM
@@ -210,23 +210,19 @@ end if
    end do
 
    overlay(plot(0,nn),plot1(nn))
-   overlay(plot(0,nn),plot0(nn))
+   ; overlay(plot(0,nn),plot0(nn))
 end do ;;; panel loop
 
 ;---------------------------------------------------------------------------------------------------- legend
-orders=ispan(1,num_model+2,1)
-colorss=new(num_model+2,typeof(colors))
-modelss=new(num_model+2,typeof(models))
-dashess=orders
+colorss=new(num_model+1,typeof(colors))
+modelss=new(num_model+1,typeof(models))
+dashess=ispan(1,num_model+1,1)
 colorss(0:num_model-1)=(/colors/)
 modelss(0:num_model-1)=(/models/)
 dashess(0:num_model-1)=0
 colorss(num_model)=1
-modelss(num_model)="20-CMIP5 average"
-dashess(num_model)=1
-colorss(num_model+1)=1
-modelss(num_model+1)="This model:~C~"+getenv("CASENAME")
-dashess(num_model+1)=0
+modelss(num_model)="HYCOM"
+dashess(num_model)=0
 ;print(dashess)
 
 lgres                    = True
@@ -241,23 +237,24 @@ lgres@vpHeightF          = 0.66          ; height of legend (NDC)
 lgres@lgMonoDashIndex    = False
 labels = modelss
 nitems = dimsizes(labels)                 ; number of legend items
-half=orders(0:nitems/2-1)-1
-lgres@lgItemOrder        = half(::-1)
-print("DEBUG "+nitems)
-
-lgres@lgLineColors       = colorss(0:nitems/2-1)
-lgres@lgDashIndexes      = dashess(0:nitems/2-1)
-lbid0= gsn_create_legend(wks,nitems/2,labels(0:nitems/2-1),lgres)
-lgres@lgLineColors       = colorss(nitems/2:nitems-1)
-lgres@lgDashIndexes      = dashess(nitems/2:nitems-1)
-lbid1= gsn_create_legend(wks,nitems/2,labels(nitems/2:nitems-1),lgres)
+; half=orders(0:nitems/2-1)-1
+; lgres@lgItemOrder        = half(::-1)
+; lgres@lgLineColors       = colorss(0:nitems/2-1)
+; lgres@lgDashIndexes      = dashess(0:nitems/2-1)
+; lbid0= gsn_create_legend(wks,nitems/2,labels(0:nitems/2-1),lgres)
+; lgres@lgLineColors       = colorss(nitems/2:nitems-1)
+; lgres@lgDashIndexes      = dashess(nitems/2:nitems-1)
+; lbid1= gsn_create_legend(wks,nitems/2,labels(nitems/2:nitems-1),lgres)
+lgres@lgLineColors       = colorss
+lgres@lgDashIndexes      = dashess
+lbid0= gsn_create_legend(wks,nitems,labels,lgres)
 amres                  = True
 amres@amJust           = "CenterCenter"  ; Use bottom right corner of box 
 amres@amParallelPosF   = 0.64            ; + left, - right
-amres@amOrthogonalPosF =  0.015           ; + up    - down
+; amres@amOrthogonalPosF =  0.015           ; + up    - down
 annoid0= gsn_add_annotation(plot(0,1),lbid0,amres)  ; add legend to plot
-amres@amOrthogonalPosF = -0.015           ; + up    - down
-annoid1= gsn_add_annotation(plot(0,3),lbid1,amres)  ; add legend to plot
+; amres@amOrthogonalPosF = -0.015           ; + up    - down
+; annoid1= gsn_add_annotation(plot(0,3),lbid1,amres)  ; add legend to plot
 
 ;---------------------------------------------------------------------------------------------------- legend
 resP=True
