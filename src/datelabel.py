@@ -764,14 +764,6 @@ class _FXDateRange(DateRange):
     def _coerce_to_self(cls, item):
         # got to be a better way to write this
         return item
-        
-    @property
-    def start(self):
-        raise FXDateException(func_name='start')
-
-    @property
-    def end(self):
-        raise FXDateException(func_name='end')
 
     def format(self):
         return "<N/A>"
