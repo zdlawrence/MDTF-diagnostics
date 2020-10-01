@@ -12,9 +12,13 @@
 
 set -Eeo pipefail
 
+REPO_NAME="MDTF-diagnostics"
+DEFAULT_POD="all"
+DEFAULT_BRANCH="feature/gfdl-data"
+
 # parse aruments manually
-POD="all"
-BRANCH="develop"
+POD="$DEFAULT_POD"
+BRANCH="$DEFAULT_BRANCH"
 while (( "$#" )); do
     case "$1" in
         ?*)
@@ -34,11 +38,28 @@ module load git
 
 # checkout requested branch into $TMPDIR
 cd $TMPDIR
-git clone --depth 1 --branch "$BRANCH" https://gitlab.gfdl.noaa.gov/thomas.jackson/MDTF-diagnostics.git
-cd MDTF-diagnostics
+git clone --depth 1 "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git"
+cd "$REPO_NAME"
+# check if requested branch exists.
+git show-ref --verify --quiet "refs/heads/$BRANCH"
+if [ $? -eq 0 ]; then
+    git checkout "$BRANCH"
+else
+    echo "ERROR: can't find branch $BRANCH, using $DEFAULT_BRANCH" >&2
+    git checkout "$DEFAULT_BRANCH"
+fi
+# check if requested POD exists
+if [[ "$POD" != "$DEFAULT_POD" && ! -d "diagnostics/$POD" ]]; then
+    echo "ERROR: can't find POD $POD, running all PODs" >&2
+    POD="$DEFAULT_POD"
+fi
 
 # use conda envs, data from MDTeam installation
-MDTEAM_MDTF="/home/mdteam/DET/analysis/mdtf/MDTF-diagnostics"
+MDTEAM_MDTF="/home/mdteam/DET/analysis/mdtf/${REPO_NAME}"
+if [ ! -d "$MDTEAM_MDTF" ]; then
+    echo "ERROR: can't find MDTeam install at ${MDTEAM_MDTF}" 1>&2
+    exit 1
+fi
 source "${MDTEAM_MDTF}/src/conda/conda_init.sh" "/home/mdteam/anaconda"
 conda activate "${MDTEAM_MDTF}/envs/_MDTF_base"
 
