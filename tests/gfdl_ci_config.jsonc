@@ -1,0 +1,71 @@
+// Configuration for MDTF-diagnostics testing within GFDL firewall.
+// Used by tests/gfdl_ci.sh.
+//
+// All text to the right of an unquoted "//" is a comment and ignored, as well
+// as blank lines (JSONC quasi-standard.) 
+{
+  "case_list" : [
+    {
+      "CASENAME" : "ESM4_historical",
+      "model" : "GFDL-ESM4",
+      "experiment" : "historical",
+      "convention" : "CMIP",
+      "FIRSTYR" : 2000,
+      "LASTYR" : 2010
+      // "CASE_ROOT_DIR" : "/archive/cm6/ESM4/DECK/ESM4_historical_D1/gfdl.ncrc4-intel16-prod-openmp/pp",
+    }
+  ],
+  // PATHS ---------------------------------------------------------------------
+
+  // Site-specific installation of observational data used by individual PODs.
+  // This will be GCP'ed locally if running on PPAN.
+  "OBS_DATA_REMOTE": "/home/Oar.Gfdl.Mdteam/DET/analysis/mdtf/obs_data",
+
+  // Parent directory containing observational data used by individual PODs.
+  "OBS_DATA_ROOT": "$TMPDIR/inputdata/obs_data",
+
+  // Parent directory containing results from different models.
+  "MODEL_DATA_ROOT": "$TMPDIR/inputdata/model",
+
+  // Working directory. Defaults to working directory if blank.
+  "WORKING_DIR": "$TMPDIR/wkdir",
+
+  // Directory to write output. The results of each run of the framework will be
+  // put in a subdirectory of this directory.
+  "OUTPUT_DIR": "$HOME/mdtf_ci",
+
+  // Location of the Anaconda/miniconda installation to use for managing 
+  // dependencies (path returned by running `conda info --base`.)
+  "conda_root": "/home/mdteam/anaconda",
+
+  // Directory containing the framework-specific conda environments.
+  "conda_env_root": "/home/mdteam/DET/analysis/mdtf/MDTF-diagnostics/envs",
+
+  // SETTINGS ------------------------------------------------------------------
+
+  // Method used to fetch model data.
+  "data_manager": "Gfdldatacmip6",
+
+  // Method used to manage dependencies.
+  "environment_manager": "Conda",
+
+  // Set to true to have PODs save postscript figures in addition to bitmaps.
+  "save_ps": false,
+
+  // Set to true to have PODs save netCDF files of processed data.
+  "save_nc": false,
+
+  // Set to true to save HTML and bitmap plots in a .tar file.
+  "make_variab_tar": false,
+
+  // Set to true to overwrite results in OUTPUT_DIR; otherwise results saved 
+  // under a unique name.
+  "overwrite": false,
+
+  // Set to true for framework test. Data is fetched but PODs are not run.
+  "test_mode": false,
+
+  // Set to true for framework test. No external commands are run and no remote 
+  // data is copied. Implies test_mode.
+  "keep_temp": false
+}
