@@ -380,11 +380,12 @@ class GfdlarchiveDataManager(six.with_metaclass(ABCMeta, DataManager)):
         """Test whether data is current based on filesystem modification dates.
 
         TODO:
-        - Throw an error if local copy has been modified after remote copy. 
-        - Handle case where local data involves processing of remote data, like
-            ncrcat'ing. Copy raw remote files to temp directory if we need to 
-            process?
-        - gcp --sync does this already.
+            - Throw an error if local copy has been modified after remote copy. 
+            - Handle case where local data involves processing of remote data, like
+                ncrcat'ing. Copy raw remote files to temp directory if we need to 
+                process?
+            - gcp --sync does this already.
+
         """
         return False
         # return os.path.getmtime(dataset._local_data) \
@@ -393,7 +394,7 @@ class GfdlarchiveDataManager(six.with_metaclass(ABCMeta, DataManager)):
     def remote_data_list(self):
         """Process list of requested data to make data fetching efficient.
         """
-        return sorted(list(self.data_keys))
+        return sorted(list(self.data_keys), key=lambda dk: repr(dk))
 
     def _fetch_exception_handler(self, exc):
         print(exc)
@@ -416,9 +417,7 @@ class GfdlarchiveDataManager(six.with_metaclass(ABCMeta, DataManager)):
         # GCP can't copy to home dir, so always copy to temp
         tmpdirs = util_mdtf.TempDirManager()
         work_dir = tmpdirs.make_tempdir(hash_obj = d_key)
-        remote_files = sorted( # cast from set to list so we can go in chrono order
-            list(self.data_files[d_key]), key=lambda ds: ds.date_range.start
-            ) 
+        remote_files = list(self.data_files[d_key])
 
         # copy remote files
         # TODO: Do something intelligent with logging, caught OSErrors
@@ -507,6 +506,9 @@ class GfdlarchiveDataManager(six.with_metaclass(ABCMeta, DataManager)):
         trim_count = 0
         for f in remote_files:
             file_name = os.path.basename(f._remote_data)
+            if f.date_range.is_static:
+                # skip date trimming logic for time-independent files
+                continue
             if not self.date_range.overlaps(f.date_range):
                 print(("\tWarning: {} has dates {} outside of requested "
                     "range {}.").format(file_name, f.date_range, self.date_range))
@@ -679,19 +681,27 @@ class GfdlppDataManager(GfdlarchiveDataManager):
             chunk_freq=str(dataset.chunk_freq)
         )
 
-    def parse_relative_path(self, subdir, filename):
-        rel_path = os.path.join(subdir, filename)
-        match = re.match(r"""
+    _pp_ts_regex = re.compile(r"""
             /?                      # maybe initial separator
             (?P<component>\w+)/     # component name
-            ts/                     # timeseries; TODO: handle time averages (not needed now)
+            ts/                     # timeseries;
             (?P<date_freq>\w+)/     # ts freq
             (?P<chunk_freq>\w+)/    # data chunk length   
             (?P<component2>\w+)\.        # component name (again)
             (?P<start_date>\d+)-(?P<end_date>\d+)\.   # file's date range
             (?P<name_in_model>\w+)\.       # field name
             nc                      # netCDF file extension
-        """, rel_path, re.VERBOSE)
+        """, re.VERBOSE)
+    _pp_static_regex = re.compile(r"""
+            /?                      # maybe initial separator
+            (?P<component>\w+)/     # component name 
+            (?P<component2>\w+)     # component name (again)
+            \.static\.nc             # static frequency, netCDF file extension                
+        """, re.VERBOSE)
+    
+    def parse_relative_path(self, subdir, filename):
+        rel_path = os.path.join(subdir, filename)
+        match = re.match(self._pp_ts_regex, rel_path)
         if match:
             #if match.group('component') != match.group('component2'):
             #    raise ValueError("Can't parse {}.".format(rel_path))
@@ -701,9 +711,24 @@ class GfdlppDataManager(GfdlarchiveDataManager):
             ds.date_range = datelabel.DateRange(ds.start_date, ds.end_date)
             ds.date_freq = self.DateFreq(ds.date_freq)
             ds.chunk_freq = self.DateFreq(ds.chunk_freq)
+            assert ds.date_range.is_static == ds.date_freq.is_static
             return ds
-        else:
-            raise ValueError("Can't parse {}, skipping.".format(rel_path))
+        # match failed, try static file regex instead
+        match = re.match(self._pp_static_regex, rel_path)
+        if match:
+            md = match.groupdict()
+            md['start_date'] = datelabel.FXDateMin
+            md['end_date'] = datelabel.FXDateMax
+            md['name_in_model'] = None # TODO: handle better
+            ds = DataSet(**md)
+            del ds.component2
+            ds._remote_data = os.path.join(self.root_dir, rel_path)
+            ds.date_range = datelabel.FXDateRange
+            ds.date_freq = self.DateFreq('static')
+            ds.chunk_freq = self.DateFreq('static')
+            assert ds.date_range.is_static == ds.date_freq.is_static
+            return ds
+        raise ValueError("Can't parse {}, skipping.".format(rel_path))
 
     def subdirectory_filters(self):
         return [self.component, 'ts', frepp_freq(self.data_freq), 
@@ -958,7 +983,7 @@ frepp_translate = {
 def parse_frepp_stub(frepp_stub):
     """Converts the frepp arguments to a Python dictionary.
 
-    See `https://wiki.gfdl.noaa.gov/index.php/FRE_User_Documentation#Automated_creation_of_diagnostic_figures`_.
+    See `<https://wiki.gfdl.noaa.gov/index.php/FRE_User_Documentation#Automated_creation_of_diagnostic_figures>`__.
 
     Returns: :py:obj:`dict` of frepp parameters.
     """
