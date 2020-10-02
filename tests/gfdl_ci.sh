@@ -2,7 +2,7 @@
 #SBATCH --job-name=MDTF-CI
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
-#SBATCH -o $HOME/mdtf_ci/%x.%j.out
+#SBATCH --output=$HOME/mdtf_ci/%x.%j.out
 #SBATCH --constraint=bigmem
 
 # Manual script for "CI" testing of MDTF-diagnostics within GFDL firewall.
@@ -11,6 +11,7 @@
 # PODs in develop branch.
 
 set -Eeo pipefail
+set -xv
 
 REPO_NAME="MDTF-diagnostics"
 DEFAULT_POD="all"
@@ -34,15 +35,15 @@ while (( "$#" )); do
     esac
 done
 
-module load git
+# module load git
 
 # checkout requested branch into $TMPDIR
 cd $TMPDIR
-git clone --depth 1 "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git"
+git clone --depth 1 --recursive "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git"
 cd "$REPO_NAME"
 # check if requested branch exists.
-git show-ref --verify --quiet "refs/heads/$BRANCH"
-if [ $? -eq 0 ]; then
+git show-ref --verify --quiet "refs/heads/$BRANCH" || error_code=$?
+if [ "${error_code}" -eq 0 ]; then
     git checkout "$BRANCH"
 else
     echo "ERROR: can't find branch $BRANCH, using $DEFAULT_BRANCH" >&2
@@ -64,4 +65,4 @@ source "${MDTEAM_MDTF}/src/conda/conda_init.sh" "/home/mdteam/anaconda"
 conda activate "${MDTEAM_MDTF}/envs/_MDTF_base"
 
 # run script
-/usr/bin/env python -m src.mdtf_gfdl --pods "$POD" -- -f "${MDTEAM_MDTF}/tests/gfdl_ci_config.jsonc"
+/usr/bin/env python -m src.mdtf_gfdl -f "${MDTEAM_MDTF}/tests/gfdl_ci_config.jsonc" --pods "$POD" -- 

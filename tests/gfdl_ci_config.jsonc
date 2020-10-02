@@ -44,7 +44,7 @@
   // SETTINGS ------------------------------------------------------------------
 
   // Method used to fetch model data.
-  "data_manager": "Gfdldatacmip6",
+  "data_manager": "Gfdludacmip6",
 
   // Method used to manage dependencies.
   "environment_manager": "Conda",
