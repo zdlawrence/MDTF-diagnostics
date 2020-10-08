@@ -14,26 +14,41 @@ set -Eeo pipefail
 set -xv
 
 REPO_NAME="MDTF-diagnostics"
+# use conda envs, data from MDTeam installation
+MDTEAM_MDTF="/home/mdteam/DET/analysis/mdtf/${REPO_NAME}"
+
 DEFAULT_POD="all"
 DEFAULT_BRANCH="feature/gfdl-data"
 
 # parse aruments manually
-POD="$DEFAULT_POD"
-BRANCH="$DEFAULT_BRANCH"
 while (( "$#" )); do
     case "$1" in
-        ?*)
-            # Assume nonempty input is name of POD to test
-            if [ -n "$1" ]; then
-                POD="$1"
-                BRANCH="pod/${1}"
+        -p|--pod)
+            if [ -n "$2" ]; then
+                POD="$2"
             fi
+            shift 2
+            ;;
+        -b|--branch)
+            if [ -n "$2" ]; then
+                BRANCH="$2"
+            fi
+            shift 2
+            ;;
+        -?*)
+            echo "$0: Unknown option (ignored): $1\n" >&2
             shift 1
             ;;
         *) # Default case: No more options, so break out of the loop.
             break
     esac
 done
+if [ -z "$POD" ]; then
+    POD="$DEFAULT_POD"
+fi
+if [ -z "$BRANCH" ]; then
+    BRANCH="$DEFAULT_BRANCH"
+fi
 
 # module load git
 
@@ -46,17 +61,15 @@ git show-ref --verify --quiet "refs/heads/$BRANCH" || error_code=$?
 if [ "${error_code}" -eq 0 ]; then
     git checkout "$BRANCH"
 else
-    echo "ERROR: can't find branch $BRANCH, using $DEFAULT_BRANCH" >&2
+    echo "ERROR: can't find branch `$BRANCH`, using `$DEFAULT_BRANCH`" >&2
     git checkout "$DEFAULT_BRANCH"
 fi
 # check if requested POD exists
-if [[ "$POD" != "$DEFAULT_POD" && ! -d "diagnostics/$POD" ]]; then
-    echo "ERROR: can't find POD $POD, running all PODs" >&2
+if [[ "$POD" != "$DEFAULT_POD" && ! -d "diagnostics/${POD}" ]]; then
+    echo "ERROR: can't find POD `$POD`, instead using default `$DEFAULT_POD`" >&2
     POD="$DEFAULT_POD"
 fi
 
-# use conda envs, data from MDTeam installation
-MDTEAM_MDTF="/home/mdteam/DET/analysis/mdtf/${REPO_NAME}"
 if [ ! -d "$MDTEAM_MDTF" ]; then
     echo "ERROR: can't find MDTeam install at ${MDTEAM_MDTF}" 1>&2
     exit 1
