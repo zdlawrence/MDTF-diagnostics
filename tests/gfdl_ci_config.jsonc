@@ -32,7 +32,7 @@
 
   // Directory to write output. The results of each run of the framework will be
   // put in a subdirectory of this directory.
-  "OUTPUT_DIR": "$HOME/mdtf_ci",
+  "OUTPUT_DIR": "$TMPDIR/wkdir",
 
   // Location of the Anaconda/miniconda installation to use for managing 
   // dependencies (path returned by running `conda info --base`.)
