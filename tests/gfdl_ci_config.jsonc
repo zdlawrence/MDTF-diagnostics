@@ -6,13 +6,13 @@
 {
   "case_list" : [
     {
-      "CASENAME" : "ESM4_historical",
-      "model" : "GFDL-ESM4",
-      "experiment" : "historical",
+      "CASENAME" : "ESM4_historical_D1",
+      //"model" : "GFDL-ESM4",
+      //"experiment" : "historical",
       "convention" : "CMIP",
       "FIRSTYR" : 2000,
-      "LASTYR" : 2010
-      // "CASE_ROOT_DIR" : "/archive/cm6/ESM4/DECK/ESM4_historical_D1/gfdl.ncrc4-intel16-prod-openmp/pp",
+      "LASTYR" : 2009,
+      "CASE_ROOT_DIR" : "/archive/oar.gfdl.cmip6/ESM4/DECK/ESM4_historical_D1/gfdl.ncrc4-intel16-prod-openmp/pp"
     }
   ],
   // PATHS ---------------------------------------------------------------------
@@ -44,7 +44,7 @@
   // SETTINGS ------------------------------------------------------------------
 
   // Method used to fetch model data.
-  "data_manager": "Gfdludacmip6",
+  "data_manager": "Gfdl_auto",
 
   // Method used to manage dependencies.
   "environment_manager": "Conda",
