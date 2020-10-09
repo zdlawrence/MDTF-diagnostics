@@ -2,7 +2,7 @@
 #SBATCH --job-name=MDTF-CI
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
-#SBATCH --output=$HOME/mdtf_ci/%x.%j.out
+#SBATCH --output=./%x.%j.out
 #SBATCH --constraint=bigmem
 
 # Manual script for "CI" testing of MDTF-diagnostics within GFDL firewall.
@@ -62,16 +62,16 @@ cd $TMPDIR
 git clone --depth 1 --recursive "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git"
 cd "$REPO_NAME"
 # check if requested branch exists.
-git show-ref --verify --quiet "refs/heads/$BRANCH" || error_code=$?
+git show-ref --verify --quiet "refs/heads/${BRANCH}" || error_code=$?
 if [ "${error_code}" -eq 0 ]; then
     git checkout "$BRANCH"
 else
-    echo "ERROR: can't find branch `$BRANCH`, using `$DEFAULT_BRANCH`" >&2
+    echo "ERROR: can't find branch $BRANCH, using $DEFAULT_BRANCH" >&2
     git checkout "$DEFAULT_BRANCH"
 fi
 # check if requested POD exists
 if [[ "$POD" != "$DEFAULT_POD" && ! -d "diagnostics/${POD}" ]]; then
-    echo "ERROR: can't find POD `$POD`, instead using default `$DEFAULT_POD`" >&2
+    echo "ERROR: can't find POD $POD, instead using default $DEFAULT_POD" >&2
     POD="$DEFAULT_POD"
 fi
 
