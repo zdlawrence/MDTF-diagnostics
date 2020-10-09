@@ -24,7 +24,7 @@ MODULECMD="/usr/local/Modules/default/bin/modulecmd"
 # output directory of MDTF script
 OUTPUT_DIR="${TMPDIR}/wkdir"
 
-DEFAULT_POD="all"
+DEFAULT_POD="atmos"
 DEFAULT_BRANCH="feature/gfdl-data"
 
 # parse aruments manually
@@ -90,11 +90,7 @@ mkdir -p "$OUTPUT_DIR" # not strictly necessary
 if [ "$( find "$OUTPUT_DIR" -maxdepth 1 -mindepth 1 -printf %y )" = "d" ]; then
     RESULTS_DIR=$( find "$OUTPUT_DIR" -maxdepth 1 -mindepth 1 )
     # run verify_links to determine if all plots created (interpret that as success)
-    if [ ! -x ./src/verify_links.py ]; then
-        echo "Couldn't find verify_links.py."
-        exit 1
-    fi
-    ./src/verify_links.py -v "$RESULTS_DIR" || error_code=$?
+    /usr/bin/env python -m src.verify_links -v "$RESULTS_DIR" || error_code=$?
     if [ "${error_code}" -eq 0 ]; then
         echo "All links found; test completed successfully."
         exit 0
