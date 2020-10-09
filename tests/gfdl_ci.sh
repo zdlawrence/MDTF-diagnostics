@@ -14,7 +14,6 @@
 # CLI options are name of branch and pod to run.
 
 set -Eeo pipefail
-set -xv
 
 REPO_NAME="MDTF-diagnostics"
 # use conda envs, data from MDTeam installation
@@ -90,14 +89,7 @@ mkdir -p "$OUTPUT_DIR" # not strictly necessary
 if [ "$( find "$OUTPUT_DIR" -maxdepth 1 -mindepth 1 -printf %y )" = "d" ]; then
     RESULTS_DIR=$( find "$OUTPUT_DIR" -maxdepth 1 -mindepth 1 )
     # run verify_links to determine if all plots created (interpret that as success)
-    /usr/bin/env python -m src.verify_links -v "$RESULTS_DIR" || error_code=$?
-    if [ "${error_code}" -eq 0 ]; then
-        echo "All links found; test completed successfully."
-        exit 0
-    else
-        echo "Error returned by verify_links; test failed."
-        exit 1
-    fi
+    /usr/bin/env python -m src.verify_links -v "$RESULTS_DIR"
 else
     echo "Found unexpected content in $OUTPUT_DIR:"
     ls "$OUTPUT_DIR"
