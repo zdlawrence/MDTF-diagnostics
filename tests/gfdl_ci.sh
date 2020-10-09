@@ -4,11 +4,14 @@
 #SBATCH --ntasks=1
 #SBATCH --output=./%x.%j.out
 #SBATCH --constraint=bigmem
+#SBATCH --partition=analysis  
+
+# (partiton=analysis needed so that we run on analysis queue for access to 
+# /data_cmip6; bigmem not necessary but nice)
 
 # Manual script for "CI" testing of MDTF-diagnostics within GFDL firewall.
 # Intended to be submitted as a slurm job from analysis.
-# Takes one optional argument, the name of the POD to test; otherwise runs all
-# PODs in develop branch.
+# CLI options are name of branch and pod to run.
 
 set -Eeo pipefail
 set -xv
