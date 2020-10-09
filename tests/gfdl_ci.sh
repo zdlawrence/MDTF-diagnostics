@@ -59,16 +59,12 @@ eval $( "$MODULECMD" bash load git )
 
 # checkout requested branch into $TMPDIR
 cd $TMPDIR
-git clone --depth 1 --recursive "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git"
-cd "$REPO_NAME"
-# check if requested branch exists.
-git show-ref --verify --quiet "refs/heads/${BRANCH}" || error_code=$?
-if [ "${error_code}" -eq 0 ]; then
-    git checkout "$BRANCH"
-else
-    echo "ERROR: can't find branch $BRANCH, using $DEFAULT_BRANCH" >&2
-    git checkout "$DEFAULT_BRANCH"
+git clone --depth 1 --recursive --branch "$BRANCH" "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git" || error_code=$?
+if [ "${error_code}" -ne 0 ]; then
+    echo "ERROR: couldn't checkout branch $BRANCH" >&2
+    exit 1
 fi
+cd "$REPO_NAME"
 # check if requested POD exists
 if [[ "$POD" != "$DEFAULT_POD" && ! -d "diagnostics/${POD}" ]]; then
     echo "ERROR: can't find POD $POD, instead using default $DEFAULT_POD" >&2
