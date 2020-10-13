@@ -14,6 +14,7 @@
 # CLI options are name of branch and pod to run.
 
 set -Eeo pipefail
+exit_code=0 # for error handling on commands that might fail, since we set -e
 
 REPO_NAME="MDTF-diagnostics"
 # use conda envs, data from MDTeam installation
@@ -61,8 +62,8 @@ eval $( "$MODULECMD" bash load git )
 
 # checkout requested branch into $TMPDIR
 cd $TMPDIR
-git clone --depth 1 --recursive --branch "$BRANCH" "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git" || error_code=$?
-if [ "${error_code}" -ne 0 ]; then
+git clone --depth 1 --recursive --branch "$BRANCH" "https://gitlab.gfdl.noaa.gov/thomas.jackson/${REPO_NAME}.git" || exit_code=$?
+if [ "${exit_code}" -ne 0 ]; then
     echo "ERROR: couldn't checkout branch $BRANCH" >&2
     exit 1
 fi
@@ -79,7 +80,11 @@ if [ ! -d "$MDTEAM_MDTF" ]; then
     exit 1
 fi
 source "${MDTEAM_MDTF}/src/conda/conda_init.sh" "/home/mdteam/anaconda"
-conda activate "${MDTEAM_MDTF}/envs/_MDTF_base"
+conda activate "${MDTEAM_MDTF}/envs/_MDTF_base" || exit_code=$?
+if [ "${exit_code}" -ne 0 ]; then
+    echo "ERROR: conda activate failed" >&2
+    exit 1
+fi
 mkdir -p "$OUTPUT_DIR" # not strictly necessary
 
 # run script
